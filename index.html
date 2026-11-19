@@ -1,0 +1,2695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- 📱 v0.19: "Add to Home Screen" on iPhone launches standalone, no Safari bars (iOS won't allow page fullscreen) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HexCap">
+<title>HexCap v0.19 — Thumbs</title>
+<style>
+  /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
+     "Copy / Search Google" on mobile — a button that argues with you is not a
+     button. touch-callout kills the iOS long-press menu. (Talon, 2026-11-12) */
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+    -webkit-user-select:none;-moz-user-select:none;user-select:none;
+    -webkit-touch-callout:none}
+  html,body{margin:0;padding:0;background:#0b0d14;color:#e8e6f0;
+    font-family:"Trebuchet MS",Verdana,system-ui,sans-serif;
+    overscroll-behavior:none;touch-action:manipulation}
+  canvas,#stage{touch-action:none}
+  #wrap{max-width:1020px;margin:0 auto;padding:8px 8px 20px}
+  h1{font-size:17px;margin:4px 0 2px;letter-spacing:1px} h1 span{color:#8b85ff}
+  .sub{font-size:11px;color:#6f6b85;margin-bottom:8px}
+  #hud{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;
+    background:#141826;border:1px solid #242a3d;border-radius:10px;padding:8px 10px;margin-bottom:6px}
+  .stat{font-size:12px;color:#8e89a8;white-space:nowrap} .stat b{color:#e8e6f0;font-size:15px}
+  #sCoin{color:#ffd166} .hearts{font-size:15px;letter-spacing:1px}
+  #pauseBtn{background:#1b2031;color:#cfcbe4;border:1px solid #2f3550;
+    border-radius:7px;padding:5px 12px;font-size:11px;font-weight:bold;letter-spacing:1px}
+  /* 🐛 "THE TERRACES" is 4 chars longer than "DOWNTOWN" — long enough to wrap the
+     HUD onto two rows at block 10, which shifted the whole canvas down and read
+     as "the map changed height." Reserve space for the longest district name. */
+  #sDist2{display:inline-block;min-width:126px}
+  #hudBtns{margin-left:auto;display:flex;gap:8px;flex:0 0 auto;white-space:nowrap}
+  #arms{display:flex;gap:6px;margin-bottom:6px}
+  .arm{flex:1;background:#141826;border:1px solid #2b3148;border-radius:10px;
+    padding:7px 6px;text-align:center;cursor:pointer;user-select:none;touch-action:manipulation}
+  .arm.sel{border-color:#8b85ff;background:#211f3d;box-shadow:0 0 0 1px #8b85ff inset}
+  .arm.empty{opacity:.4}
+  .arm .n{font-size:16px} .arm .l{font-size:10px;letter-spacing:1px;color:#8e89a8;margin-top:1px}
+  .arm .c{font-size:12px;font-weight:bold;color:#e8e6f0} .arm .r{font-size:9px;color:#6f6b85}
+  .cdbar{height:3px;background:#0b0d14;border-radius:2px;margin-top:4px;overflow:hidden}
+  .cdbar i{display:block;height:100%;width:100%;background:#6fa8ff}
+  #stage{position:relative;border:1px solid #242a3d;border-radius:10px;overflow:hidden;background:#11141f}
+  canvas{display:block;width:100%;height:auto}
+  #banner{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;
+    font-size:30px;font-weight:bold;letter-spacing:4px;color:#fff;
+    text-shadow:0 0 18px #8b85ff,0 3px 0 #000;opacity:0;transition:opacity .25s}
+  .panel{position:absolute;inset:0;background:rgba(8,9,15,.93);display:none;
+    flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px}
+  .panel h2{margin:0 0 4px;font-size:25px;letter-spacing:2px}
+  #over h2{color:#ff6b8b} #shop h2{color:#ffd166} #pz h2{color:#8b85ff}
+  .res{font-size:13px;color:#b6b1cc;line-height:1.75;margin-bottom:10px} .res b{color:#fff;font-size:16px}
+  #vline{font-size:13px;color:#cfcbe4;font-style:italic;margin-bottom:6px;max-width:440px}
+  #vwarn{font-size:10px;color:#8e89a8;letter-spacing:1px;margin-bottom:10px}
+  #buys{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+  .buy{background:#1b2031;border:1px solid #2f3550;border-radius:10px;padding:9px 12px;min-width:132px}
+  .buy .t{font-size:14px;margin-bottom:2px}
+  .buy .d{font-size:10px;color:#8e89a8;line-height:1.5;margin-bottom:6px}
+  .buy button{width:100%;background:#8b85ff;color:#0b0d14;border:0;border-radius:7px;
+    padding:7px;font-weight:bold;font-size:12px;font-family:inherit;cursor:pointer}
+  .buy button:disabled{background:#2f3550;color:#6f6b85;cursor:default}
+  .buy .row2{display:flex;gap:4px;margin-top:4px} .buy .row2 button{font-size:11px;padding:5px}
+  button{font-family:inherit;cursor:pointer}
+  .btn{background:#8b85ff;color:#0b0d14;border:0;border-radius:8px;
+    padding:11px 22px;font-size:14px;font-weight:bold;letter-spacing:1px}
+  #pad{display:flex;gap:10px;margin-top:6px}
+  #padL,#padR{display:flex;gap:6px;flex:1}
+  #padArms{display:flex;gap:6px}
+  #pad button{flex:1;background:#1b2031;color:#cfcbe4;border:1px solid #2f3550;
+    border-radius:10px;padding:16px 4px;font-size:13px;font-weight:bold;letter-spacing:1px;
+    touch-action:manipulation}
+  #pad button:active,#pad button.on{background:#8b85ff;color:#0b0d14;border-color:#8b85ff}
+  #pad button.sel{border-color:#8b85ff;background:#211f3d;color:#fff}
+  #pad .wide{flex:1.6}
+
+  /* ---------- 📱 MOBILE: landscape, locked to the screen, thumb clusters ---- */
+  #rotate{display:none;position:fixed;inset:0;z-index:99;background:#0b0d14;
+    flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+  #rotate .big{font-size:56px}
+  #rotate .t{font-size:17px;letter-spacing:3px;color:#8b85ff;font-weight:bold}
+  #rotate .s{font-size:12px;color:#6f6b85}
+  body.mobile.portrait #rotate{display:flex}
+
+  body.mobile{overflow:hidden}
+  body.mobile #wrap{max-width:none;padding:0}
+  body.mobile h1,body.mobile .sub,body.mobile #arms,
+  body.mobile #ledger,body.mobile details,body.mobile .keys{display:none}
+  body.mobile #stage{position:fixed;inset:0;border:0;border-radius:0}
+  body.mobile #hud{position:fixed;top:0;left:0;right:0;z-index:5;margin:0;
+    border:0;border-radius:0;background:rgba(11,13,20,.72);padding:4px 8px;
+    gap:6px 10px;font-size:10px}
+  body.mobile #hud .stat{font-size:10px}
+  body.mobile #hud .stat b{font-size:12px}
+  body.mobile #hud .hearts{font-size:12px}
+  body.mobile #sigBtn,body.mobile #pauseBtn{padding:3px 8px;font-size:10px}
+
+  body.mobile #pad{position:static;height:0;margin:0}
+  body.mobile{touch-action:none}
+  body.mobile #padL,body.mobile #padR{position:fixed;bottom:10px;z-index:6;flex:none}
+  body.mobile #padL{left:10px;display:grid;gap:8px;
+    grid-template-columns:70px 70px;grid-template-rows:auto auto}
+  body.mobile #padL #bDoor{grid-column:1/3}
+  /* 🪜 weapons run UP THE RIGHT EDGE instead of sitting on top of CAST —
+     less of the street covered, and the thumb just reaches up the side. */
+  body.mobile #padR{right:10px;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  /* 🎚️ v0.19 — button size is a slider (pause screen). Scales from each corner. */
+  body.mobile #padL{transform:scale(var(--bs,1));transform-origin:bottom left}
+  body.mobile #padR{transform:scale(var(--bs,1));transform-origin:bottom right}
+  /* 🕹️ v0.19 THUMBS — the left half of the screen is a slide zone.
+     In SLIDE mode the ◀ ▶ buttons go away; ▼ DOOR stays as a backup. */
+  #slide{display:none}
+  body.mobile.slideMode #slide{display:block;position:absolute;left:0;top:0;bottom:0;width:50%;
+    touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  body.mobile.slideMode #padL #bL,body.mobile.slideMode #padL #bR{display:none}
+  #slideRing,#slideKnob{position:absolute;pointer-events:none;border-radius:50%;display:none;
+    transform:translate(-50%,-50%)}
+  #slideRing{width:64px;height:64px;border:2px solid rgba(139,133,255,.35)}
+  #slideKnob{width:34px;height:34px;background:rgba(139,133,255,.4)}
+  #slideHint{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);pointer-events:none;
+    font-size:11px;letter-spacing:1px;color:rgba(207,203,228,.45);white-space:nowrap;transition:opacity .6s}
+  #ctrlRow{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:10px;
+    font-size:12px;color:#8e89a8}
+  body.mobile #padArms{display:grid;grid-template-columns:66px 66px;gap:8px}
+  body.mobile #padArms button{height:56px;font-size:15px}
+  body.mobile #pad button{padding:0;height:56px;font-size:15px;
+    background:rgba(27,32,49,.8);backdrop-filter:blur(3px)}
+  body.mobile #padR #bCast{width:140px;height:84px;font-size:16px;
+    background:rgba(60,48,110,.86);border-color:#8b85ff;color:#e8e6f0;
+    position:relative;overflow:hidden}
+  body.mobile #padR #bCast:active{background:#8b85ff;color:#0b0d14}
+  /* ⏱️ the cooldown lives ON the button, because that's where the thumb is.
+     The desktop chips have cdbars but they're hidden on mobile, so "CAST isn't
+     firing" was really "you can't see the 0.3s hex recharge." */
+  #castCd{position:absolute;left:0;right:0;bottom:0;height:0;
+    background:rgba(4,5,10,.55);pointer-events:none;transition:none}
+  #fsBtn{display:none}
+  body.mobile #fsBtn{display:inline-block;background:#1b2031;color:#cfcbe4;
+    border:1px solid #2f3550;border-radius:7px;padding:3px 9px;font-size:11px}
+  details{margin-top:8px;background:#141826;border:1px solid #242a3d;border-radius:10px}
+  summary{padding:9px 12px;font-size:12px;letter-spacing:1px;color:#b6b1cc;cursor:pointer}
+  .tune{padding:2px 12px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px 16px}
+  .tgroup{border-top:1px solid #242a3d;padding-top:8px}
+  .tgroup h4{margin:0 0 7px;font-size:11px;letter-spacing:1.5px;color:#8b85ff}
+  .tgroup.key h4{color:#ffd166}
+  .row{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:11px;color:#9b96b5}
+  .row label{flex:1 1 auto}
+  .row input[type=range]{flex:0 0 86px;accent-color:#8b85ff}
+  .row input[type=checkbox]{accent-color:#8b85ff;width:16px;height:16px}
+  .row output{flex:0 0 40px;text-align:right;color:#e8e6f0;font-variant-numeric:tabular-nums}
+  .note{font-size:11px;color:#6f6b85;line-height:1.6;padding:0 12px 12px}
+  .keys{font-size:11px;color:#6f6b85;margin-top:8px;line-height:1.8}
+  kbd{background:#1b2031;border:1px solid #2f3550;border-radius:4px;padding:1px 6px;color:#cfcbe4;font-size:10px}
+  #ledger{margin-top:8px;background:#141826;border:1px solid #242a3d;border-radius:10px;
+    padding:9px 12px;font-size:11px;color:#8e89a8;line-height:1.8}
+  #ledger b{color:#ffd166}
+  #labBtns{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:0 12px 10px}
+  #labBtns .btn{padding:8px 16px;font-size:12px}
+  #labStatus{font-size:11px;color:#8e89a8}
+  table.lab{width:calc(100% - 24px);margin:0 12px 12px;border-collapse:collapse;font-size:11px}
+  table.lab th,table.lab td{padding:5px 7px;text-align:right;border-bottom:1px solid #242a3d}
+  table.lab th{color:#8b85ff;letter-spacing:1px;font-size:10px}
+  table.lab td:first-child,table.lab th:first-child{text-align:left;color:#e8e6f0}
+  table.lab tr.best td{background:rgba(94,194,122,.09)}
+  table.lab td b{color:#ffd166}
+
+  /* ---------- sigils ---------- */
+  #sig{overflow-y:auto;justify-content:flex-start;padding:12px}
+  #sig h2{color:#c08bff;margin-bottom:2px}
+  #sigHead{font-size:12px;color:#b6b1cc;margin-bottom:10px}
+  #sigHead b{color:#c08bff;font-size:15px}
+  .tier{width:100%;max-width:720px;margin-bottom:10px;text-align:left}
+  .tierHd{font-size:10px;letter-spacing:2px;color:#8b85ff;margin:0 0 5px;
+    border-bottom:1px solid #242a3d;padding-bottom:3px}
+  .tier.locked .tierHd{color:#5a5570}
+  .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(214px,1fr));gap:7px}
+  .sig{background:#1b2031;border:1px solid #2f3550;border-radius:9px;padding:7px 9px}
+  .sig.locked{opacity:.4}
+  .sig.maxed{border-color:#5ec27a;background:#16241b}
+  .sig .st{font-size:12px;font-weight:bold;display:flex;justify-content:space-between;gap:6px}
+  .sig .lv{color:#8b85ff;font-size:10px}
+  .sig .sd{font-size:10px;color:#8e89a8;line-height:1.5;margin:3px 0 5px}
+  .sig button{width:100%;background:#c08bff;color:#0b0d14;border:0;border-radius:6px;
+    padding:5px;font-weight:bold;font-size:11px;font-family:inherit;cursor:pointer}
+  .sig button:disabled{background:#2f3550;color:#6f6b85;cursor:default}
+  #sigClose{margin-top:4px}
+  #sigWipe{background:none;border:0;color:#4a5176;font-size:10px;margin-top:8px;text-decoration:underline}
+</style>
+</head>
+<body>
+<div id="wrap">
+
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.19 — THUMBS</span></h1>
+  <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
+
+  <div id="hud">
+    <div class="stat" id="sDist2" style="color:#8b85ff;letter-spacing:1px"></div>
+    <div class="stat">BLOCK <b id="sBlock">1</b></div>
+    <div class="stat">DIST <b id="sDist">0</b>m</div>
+    <div class="stat">BEST <b id="sBest">0</b>m</div>
+    <div class="stat">🪙 <b id="sCoin">0</b></div>
+    <div class="stat">NEXT DOOR <b id="sVend">3</b> blk</div>
+    <div class="stat" style="color:#ff9f68">TOUGH <b id="sTough">×1.0</b></div>
+    <div class="stat hearts" id="sHP">❤️❤️❤️❤️❤️</div>
+    <div class="stat" style="color:#c08bff">🔮 <b id="sSig">0</b></div>
+    <div class="stat">DEEPEST <b id="sDeep">1</b></div>
+    <div id="hudBtns">
+      <button id="fsBtn">⛶ FULL</button>
+      <button id="sigBtn" style="background:#2a2142;color:#c08bff;border:1px solid #5a3f8a;
+        border-radius:7px;padding:5px 12px;font-size:11px;font-weight:bold;letter-spacing:1px">🔮 SIGILS</button>
+      <button id="pauseBtn">⏸ PAUSE</button>
+    </div>
+  </div>
+
+  <div id="arms">
+    <div class="arm sel" data-w="hex"><div class="n">✦</div><div class="l">HEX</div><div class="c">∞</div><div class="r" id="rHex">close</div><div class="cdbar"><i></i></div></div>
+    <div class="arm" data-w="ember"><div class="n">🔥</div><div class="l">EMBER</div><div class="c" id="nEmber">0</div><div class="r" id="rEmber">far · heavy</div><div class="cdbar"><i></i></div></div>
+    <div class="arm" data-w="lance"><div class="n">⚡</div><div class="l">LANCE</div><div class="c" id="nLance">0</div><div class="r" id="rLance">far · pierces</div><div class="cdbar"><i></i></div></div>
+    <div class="arm" id="potChip" style="max-width:120px"><div class="n">🧪</div><div class="l">POULTICE</div><div class="c" id="nPot">0</div><div class="r">4 · use</div><div class="cdbar"><i></i></div></div>
+  </div>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="banner"></div>
+    <!-- 🕹️ v0.19: left-thumb slide zone. Sits under every panel (DOM order). -->
+    <div id="slide"><div id="slideRing"></div><div id="slideKnob"></div>
+      <div id="slideHint">slide ◀ ▶ to move · tap to turn · swipe ↑ door ↓ out</div></div>
+    <div class="panel" id="shop">
+      <h2>🚪 THE DOOR</h2>
+      <div id="vline"></div>
+      <div id="vwarn">⚠️ THE DOOR WON'T BE HERE WHEN YOU LOOK BACK. SPEND WHAT YOU MEAN TO SPEND.</div>
+      <div class="res">🪙 <b id="shopCoin">0</b> &nbsp;·&nbsp; ❤️ <span id="shopHP"></span></div>
+      <div id="buys"></div>
+      <button class="btn" id="leave">BACK TO THE STREET</button>
+    </div>
+    <div class="panel" id="pz"><h2>PAUSED</h2>
+      <div class="res">Take your time. Nothing's moving.</div>
+      <button class="btn" id="resume">RESUME</button>
+      <div id="ctrlRow">
+        <span>Controls:</span>
+        <button class="btn" id="ctrlMode" style="padding:6px 12px;font-size:12px">🕹️ SLIDE</button>
+        <label>Button size <input type="range" id="ctrlSize" min="0.8" max="1.4" step="0.05"></label>
+      </div></div>
+    <div class="panel" id="over"><h2>THEY GOT YOU</h2>
+      <div class="res" id="overRes"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <button class="btn" id="again">RUN AGAIN</button>
+        <button class="btn" id="toSig" style="background:#c08bff">🔮 SIGILS</button>
+      </div></div>
+
+    <div class="panel" id="sig">
+      <h2>🔮 SIGILS</h2>
+      <div id="sigHead"></div>
+      <div id="sigBody"></div>
+      <button class="btn" id="sigClose">BACK</button>
+      <div style="margin-top:8px;display:flex;gap:14px;justify-content:center">
+        <button id="sigExport" style="background:none;border:0;color:#6f6b85;font-size:10px;text-decoration:underline">copy save code</button>
+        <button id="sigImport" style="background:none;border:0;color:#6f6b85;font-size:10px;text-decoration:underline">paste save code</button>
+        <button id="sigWipe"   style="background:none;border:0;color:#4a5176;font-size:10px;text-decoration:underline">erase all progress</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 👍 LEFT THUMB moves and opens doors · 👍 RIGHT THUMB picks and fires -->
+  <div id="pad">
+    <div id="padL">
+      <button id="bDoor" class="wide">▼ DOOR</button>
+      <button id="bL">◀</button>
+      <button id="bR">▶</button>
+    </div>
+    <div id="padR">
+      <div id="padArms">
+        <button data-w="hex"   id="pHex">✦</button>
+        <button data-w="ember" id="pEmber">🔥</button>
+        <button data-w="lance" id="pLance">⚡</button>
+        <button id="pPot">🧪</button>
+      </div>
+      <button id="bCast" class="wide">✦ CAST<i id="castCd"></i></button>
+    </div>
+  </div>
+
+  <div id="rotate">
+    <div class="big">📱↻</div>
+    <div class="t">TURN YOUR PHONE</div>
+    <div class="s">HexCap wants the long way round</div>
+  </div>
+
+  <div class="keys">
+    <kbd>A</kbd><kbd>D</kbd> move &amp; face · <kbd>Space</kbd> cast · <kbd>S</kbd> door / pick lock ·
+    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>/<kbd>Q</kbd><kbd>E</kbd> switch · <kbd>4</kbd> drink a poultice ·
+    <kbd>P</kbd> pause · <kbd>R</kbd> restart
+  </div>
+
+  <div id="ledger">
+    <b>RUN LEDGER</b> — earned <b id="lEarn">0</b> · spent <b id="lSpend">0</b> · net <b id="lNet">0</b> ·
+    runes <b id="lFired">0</b> · hexes <b id="lHex">0</b> ·
+    <b id="lRate">—</b> RUNE RETURN <span style="color:#6f6b85">(coin from rune kills ÷ coin spent on runes — above 1.0 means spending pays)</span> ·
+    stashes <b id="lStash">0</b> · locks <b id="lPick">0</b> · <b id="lBack">0</b> back-hits · <b id="lPop">0</b> bullets swatted
+  </div>
+
+  <details open>
+    <summary>🤖 BOT LAB — five playstyles, same settings, headless</summary>
+    <div id="labBtns">
+      <button class="btn" id="labRun">▶ RUN SIMULATION</button>
+      <button class="btn" id="labStop" style="background:#3a3f55;color:#cfcbe4">■ STOP</button>
+      <span class="labfield" style="font-size:11px;color:#9b96b5">runs each
+        <input type="number" id="labN" value="12" min="2" max="250"
+               style="width:52px;background:#0b0d14;color:#e8e6f0;border:1px solid #2f3550;border-radius:5px;padding:3px 5px"></span>
+      <button class="btn" id="labCamp" style="background:#c08bff">🔮 RUN CAMPAIGN</button>
+      <span id="labStatus">idle</span>
+    </div>
+    <table class="lab" id="labTable"></table>
+    <div id="labAudit" style="font-size:11px;line-height:1.7;padding:0 12px 10px"></div>
+    <div class="note">
+      <b>Bots play the real <code>step()</code> — there is no second simulation to drift out of sync.</b><br>
+      They have perfect reactions and no sense of fun, so the absolute block numbers mean nothing.
+      <b>Use this to COMPARE playstyles under identical settings, never to calibrate difficulty.</b>
+      Change a slider below, re-run, and watch which column moves.<br><br>
+      <b>⏱ CUT OFF</b> counts runs that hit the 15-minute time cap instead of dying. <b>Any number above 0 there means
+      that policy's row UNDERSTATES it</b> — read the result as "at least this far." Measurement first, conclusions second.<br><br>
+      <b>🔮 RUN CAMPAIGN gives each bot a CAREER instead of a snapshot.</b> It starts from zero sigils, runs, earns,
+      spends down its own buy order, and runs again — so it answers the one question a snapshot never can:
+      <b>does carving sigils actually let you go deeper?</b> <b>EARLY</b> vs <b>LATE</b> is the median block of the
+      first and last third of the career; <b>GAIN</b> is the whole bet.<br>
+      ⚠️ Noise floor at n=12 is about <b>±1 block</b> — require a gain of <b>2+</b> before believing it.
+      <b>Put 40–100 in the runs box</b> for a long career: more runs makes GAIN trustworthy and reveals where
+      progression stops.<br><br>
+      <b>📈 The sparkline under each policy name is the career curve.</b> A line that rises and then flattens
+      is a tree that ran out of upgrades. <b>PLATEAU</b> is the run number of the last new record —
+      <span style="color:#5ec27a">green</span> means it was still improving at the end,
+      <span style="color:#ff9f68">orange</span> means it stopped early and the rest of the career was flat.
+    </div>
+  </details>
+
+  <details>
+    <summary>⚙️ LIVE TUNING</summary>
+    <div class="tune">
+      <div class="tgroup key">
+        <h4>🛡️ RIOT SHIELD</h4>
+        <div class="row"><label>Shield HP</label><input type="range" id="t_shieldHp" min="1" max="20" step="1"><output></output></div>
+        <div class="row"><label>Turn time (s)</label><input type="range" id="t_shieldTurn" min="0" max="2.5" step="0.1"><output></output></div>
+      </div>
+      <div class="tgroup key">
+        <h4>🔫 GUNS</h4>
+        <div class="row"><label>Cop hold range</label><input type="range" id="t_copRange" min="120" max="600" step="20"><output></output></div>
+        <div class="row"><label>🎯 Sniper range</label><input type="range" id="t_sniperRange" min="400" max="1400" step="20"><output></output></div>
+        <div class="row"><label>💀 Boss HP ×</label><input type="range" id="t_bossHpMult" min="0.3" max="3" step="0.1"><output></output></div>
+        <div class="row"><label>💀 Boss every N blk</label><input type="range" id="t_bossEvery" min="3" max="20" step="1"><output></output></div>
+        <div class="row"><label>💀 Boss swing (s)</label><input type="range" id="t_bossSwing" min="0.5" max="2.5" step="0.05"><output></output></div>
+        <div class="row"><label>🔒 Cage width (px)</label><input type="range" id="t_arenaWide" min="400" max="2400" step="20"><output></output></div>
+        <div class="row"><label>🏃 Bot kite range</label><input type="range" id="t_kiteNear" min="60" max="400" step="10"><output></output></div>
+        <div class="row"><label>⚡ Lance pierce</label><input type="range" id="t_lancePierce" min="1" max="12" step="1"><output></output></div>
+        <div class="row"><label>Telegraph (s)</label><input type="range" id="t_windup" min="0.2" max="2" step="0.1"><output></output></div>
+        <div class="row"><label>Reload (s)</label><input type="range" id="t_reload" min="0.5" max="5" step="0.25"><output></output></div>
+        <div class="row"><label>Bullet speed</label><input type="range" id="t_bullet" min="150" max="800" step="25"><output></output></div>
+      </div>
+      <div class="tgroup key">
+        <h4>✦ THE HEX</h4>
+        <div class="row"><label>Range (px)</label><input type="range" id="t_hexRange" min="40" max="260" step="5"><output></output></div>
+        <div class="row"><label>Damage</label><input type="range" id="t_hexDmg" min="1" max="5" step="1"><output></output></div>
+        <div class="row"><label>Cooldown</label><input type="range" id="t_hexCD" min="0.1" max="1.2" step="0.05"><output></output></div>
+        <div class="row"><label>Stagger (s)</label><input type="range" id="t_hexStun" min="0" max="0.8" step="0.02"><output></output></div>
+        <div class="row"><label>Move × while hexing</label><input type="range" id="t_hexMove" min="0" max="1" step="0.05"><output></output></div>
+        <div class="row"><label>Show reach line</label><input type="checkbox" id="t_showReach" checked></div>
+        <div class="row"><label>Hex swats bullets</label><input type="checkbox" id="t_hexPops" checked></div>
+      </div>
+      <div class="tgroup key">
+        <h4>🧪 POULTICES</h4>
+        <div class="row"><label>🩹 Mend price</label><input type="range" id="t_mendCost" min="4" max="60" step="2"><output></output></div>
+        <div class="row"><label>🧪 Poultice price</label><input type="range" id="t_potCost" min="4" max="60" step="2"><output></output></div>
+        <div class="row"><label>Max carried</label><input type="range" id="t_potMax" min="0" max="8" step="1"><output></output></div>
+        <div class="row"><label>Use time (s)</label><input type="range" id="t_potTime" min="0" max="2.5" step="0.1"><output></output></div>
+      </div>
+      <div class="tgroup">
+        <h4>🔓 LOCKS &amp; DOORS</h4>
+        <div class="row"><label>Pick time (s)</label><input type="range" id="t_pickTime" min="1" max="10" step="0.5"><output></output></div>
+        <div class="row"><label>Setback per hit %</label><input type="range" id="t_pickSetback" min="0" max="100" step="5"><output></output></div>
+        <div class="row"><label>Locked-door loot ×</label><input type="range" id="t_lockedLoot" min="1" max="4" step="0.5"><output></output></div>
+        <div class="row"><label>Locked chance %</label><input type="range" id="t_lockedPct" min="0" max="80" step="5"><output></output></div>
+        <div class="row"><label>Stash chance %</label><input type="range" id="t_stash" min="0" max="100" step="5"><output></output></div>
+        <div class="row"><label>Entry time (s)</label><input type="range" id="t_entry" min="0" max="2.5" step="0.1"><output></output></div>
+        <div class="row"><label>Avg gap (px)</label><input type="range" id="t_doorGap" min="300" max="2500" step="100"><output></output></div>
+      </div>
+      <div class="tgroup">
+        <h4>🪙 ECONOMY</h4>
+        <div class="row"><label>🔥 Ember price</label><input type="range" id="t_emberCost" min="1" max="30" step="1"><output></output></div>
+        <div class="row"><label>🔥 Ember damage</label><input type="range" id="t_emberDmg" min="1" max="12" step="1"><output></output></div>
+        <div class="row"><label>⚡ Lance price</label><input type="range" id="t_lanceCost" min="1" max="40" step="1"><output></output></div>
+        <div class="row"><label>⚡ Lance damage</label><input type="range" id="t_lanceDmg" min="1" max="12" step="1"><output></output></div>
+        <div class="row"><label>Coin ×</label><input type="range" id="t_coinMult" min="0.2" max="3" step="0.1"><output></output></div>
+        <div class="row"><label>Rune drop %</label><input type="range" id="t_runeDrop" min="0" max="30" step="1"><output></output></div>
+        <div class="row"><label>Start coin</label><input type="range" id="t_startCoin" min="0" max="150" step="2"><output></output></div>
+      </div>
+      <div class="tgroup">
+        <h4>🔀 SPAWN &amp; STREET</h4>
+        <div class="row"><label>Spawn per 100px</label><input type="range" id="t_perDist" min="0.05" max="1.5" step="0.05"><output></output></div>
+        <div class="row"><label>Idle trickle /s</label><input type="range" id="t_trickle" min="0" max="1" step="0.05"><output></output></div>
+        <div class="row"><label>Spawn behind %</label><input type="range" id="t_behindPct" min="0" max="70" step="5"><output></output></div>
+        <div class="row"><label>Max alive (base)</label><input type="range" id="t_baseCap" min="2" max="20" step="1"><output></output></div>
+        <div class="row"><label>Spawn-rate ramp ×</label><input type="range" id="t_ramp" min="0" max="0.6" step="0.02"><output></output></div>
+        <div class="row"><label>📉 Grace blocks</label><input type="range" id="t_grace" min="0" max="20" step="1"><output></output></div>
+        <div class="row"><label>📉 HP per block</label><input type="range" id="t_hpRamp" min="0" max="0.2" step="0.005"><output></output></div>
+        <div class="row"><label>📉 Damage per block</label><input type="range" id="t_dmgRamp" min="0" max="0.1" step="0.002"><output></output></div>
+        <div class="row"><label>Max alive (ceiling)</label><input type="range" id="t_capMax" min="8" max="30" step="1"><output></output></div>
+        <div class="row"><label>Vendor every N blk</label><input type="range" id="t_vendEvery" min="1" max="8" step="1"><output></output></div>
+        <div class="row"><label>Block length</label><input type="range" id="t_blockLen" min="1000" max="6000" step="250"><output></output></div>
+      </div>
+      <div class="tgroup">
+        <h4>🧙 PLAYER</h4>
+        <div class="row"><label>Walk speed</label><input type="range" id="t_speed" min="90" max="340" step="10"><output></output></div>
+        <div class="row"><label>Move × while runecasting</label><input type="range" id="t_castMove" min="0" max="1" step="0.05"><output></output></div>
+        <div class="row"><label>Max HP</label><input type="range" id="t_hp" min="1" max="10" step="1"><output></output></div>
+      </div>
+    </div>
+    <div class="note">
+      <b>RUNE RETURN is the number that matters now.</b> It's coin earned from rune kills ÷ coin spent on those runes.
+      Above <b>1.0×</b> means spending runes is paying for itself — below it, you're bleeding. The old "coin per rune"
+      was lying to us: it just measured how rarely you fired.<br><br>
+      <b>🩹 MEND vs 🧪 POULTICE</b> — Mend heals you on the spot at The Door (wallet-limited). Poultices are the
+      field reserve you carry out, capped, and drinking one roots you.<br><br>
+      <b>Roster shows up sooner:</b> Mob @2, Pistol Cop @5, Riot Shield @7, Shotgunner @9 — because deaths cluster
+      around blocks 8–11 and a unit that debuts at 10 is a unit nobody has actually fought.<br><br>
+      <b>Payout tracks threat:</b> thugs and runners are deliberately <i>sub-1× rune return</i> — hex food.
+      The scary ones pay for their runes. Watch <b>back-hits</b> now that shields actually show up.
+    </div>
+  </details>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   HexCap v0.5 — THE RESPONSE
+   NEW: Mob (swarm) · Pistol Cop (RANGED) · Riot Shield (directional
+        armour + slow turn) · Shotgunner · weight-curve difficulty ramp
+   FIXES: no lock-pick setback · hex beam angles down to the target
+          · nothing spawns behind you at the start of a run
+   LAWS: doors are STRATEGY not NECESSITY · inefficient, never impossible
+         · every enemy invalidates a comfortable strategy
+   ============================================================ */
+
+const TUNE = {
+  hexRange:105, hexDmg:1, hexCD:0.30, hexStun:0.18, hexMove:0.0, showReach:1,
+  pickTime:4.5, pickSetback:0, lockedLoot:2, lockedPct:35, stash:50, entry:1.0, doorGap:1400,
+  emberCost:6, emberDmg:4, lanceCost:11, lanceDmg:4, coinMult:1, runeDrop:4, runeCD:0.3,
+  startCoin:6, startEmber:2,
+  shieldHp:6, shieldTurn:0.8, copRange:320, windup:0.7, reload:2.0, bullet:520,
+  hexPops:1, potCost:18, potMax:3, potTime:0.8, mendCost:14,
+  vendEvery:5, blockLen:3000, perDist:0.58, trickle:0.24, behindPct:34, baseCap:6, ramp:0.2,
+  hpRamp:0.07, dmgRamp:0.028, grace:6, capMax:20, sniperRange:820, lancePierce:3,
+  /* bossEvery was 5 — which turned a landmark into a tollbooth. Every career
+     walled at the block-15 or block-25 boss and the ceiling fell from 45 to 26.
+     Talon's original number was 10. It was the right one. */
+  bossFrom:10, bossEvery:10, bossHpMult:1, summonEvery:5.5, kiteNear:185,
+  bossSwing:1.15, arenaWide:820, bossGrace:1.4, bossCard:2.4,
+  speed:190, castMove:0.45, hp:5
+};
+
+const ARMS = {
+  hex:{key:"hex",label:"HEX",icon:"✦",col:"#9646dc",free:true,melee:true,
+       get dmg(){return TUNE.hexDmg}, get cd(){return TUNE.hexCD}},
+  ember:{key:"ember",label:"EMBER",icon:"🔥",col:"#ff8c42",pierce:false,
+       get dmg(){return TUNE.emberDmg+upg("kindling")}, get cd(){return TUNE.runeCD}},
+  lance:{key:"lance",label:"LANCE",icon:"⚡",col:"#8fd8ff",pierce:true,
+       get dmg(){return TUNE.lanceDmg+upg("conduction")}, get cd(){return TUNE.runeCD}}
+};
+
+/* from = first block · ramp = blocks to full weight · fade = block it starts
+   becoming chaff · stagger 0 = unflinching · shield = frontal armour
+
+   ⭐ LAW: PAYOUT TRACKS THREAT. The most dangerous thing on the street must
+   be the most profitable, or the game punishes correct play. Chaff is hex
+   food (sub-1× rune return on purpose); the scary ones pay for their runes. */
+/* mass = how hard this body is to shove. A sprinter must never be able to
+   lend the big guy its speed. */
+const ENEMIES = {
+  thug  :{name:"Fist Thug",   hp:2,speed:52, dmg:1,cost:1,w:26,h:46,stagger:1.0,mass:1,
+          col:"#c9705a",face:"😠",coin:1,  from:0,wt:10,rampB:1,fade:8},
+  mob   :{name:"Mob",         hp:1,speed:66, dmg:1,cost:3,w:22,h:42,stagger:1.0,mass:0.8,
+          col:"#b06a8a",face:"🤬",coin:3,  from:2,wt:7, rampB:2,fade:16,group:4},
+  runner:{name:"Bat Runner",  hp:2,speed:112,dmg:1,cost:2,w:24,h:44,stagger:0.7,mass:0.8,
+          col:"#d9a13b",face:"😤",coin:4,  from:1,wt:8, rampB:2,fade:12},
+  brute :{name:"Brass Brute", hp:7,speed:42, dmg:2,cost:4,w:38,h:56,stagger:0.0,mass:4,
+          col:"#8d8f9e",face:"😡",coin:16, from:3,wt:6, rampB:3},
+  /* intro schedule pulled forward — deaths cluster at blocks 8–11, so a unit
+     that debuts at 10 is a unit nobody has actually fought. */
+  cop   :{name:"Pistol Cop",  hp:2,speed:60, dmg:1,cost:3,w:26,h:46,stagger:1.0,mass:1,
+          col:"#4f7fb5",face:"🔫",coin:11, from:5,wt:7, rampB:3, ranged:"pistol"},
+  shield:{name:"Riot Shield", hp:3,speed:40, dmg:2,cost:5,w:34,h:52,stagger:0.2,mass:3,
+          col:"#5a6b7a",face:"🛡️",coin:14, from:7,wt:6, rampB:3, shield:true, slowTurn:true},
+  gunner:{name:"Shotgunner",  hp:3,speed:54, dmg:2,cost:4,w:28,h:48,stagger:0.8,mass:1.2,
+          col:"#a4603f",face:"💥",coin:13, from:9,wt:6,rampB:3, ranged:"shotgun"},
+  /* 🎯 THE SNIPER — the ONE unit that is meant to threaten you from off-screen.
+     Announced by a scope glint at the screen edge, never by a free radar ping.
+     His round IS hex-swattable. Killing him means a Lance down the line or
+     closing the distance yourself. (Talon's design, 2026-11-10.) */
+  sniper:{name:"Sniper",      hp:2,speed:30, dmg:2,cost:5,w:24,h:44,stagger:1.0,mass:0.9,
+          col:"#6b5b8a",face:"🎯",coin:22, from:10,wt:5,rampB:3, ranged:"rifle"}
+};
+const RANGED={
+  pistol :{get hold(){return TUNE.copRange}, get wind(){return TUNE.windup},
+           get cool(){return TUNE.reload},   get spd(){return TUNE.bullet}, dmg:1, shots:1},
+  shotgun:{get hold(){return 170}, get wind(){return TUNE.windup*1.3},
+           get cool(){return TUNE.reload*1.4}, get spd(){return TUNE.bullet*0.75}, dmg:2, shots:3},
+  rifle  :{get hold(){return TUNE.sniperRange}, get wind(){return TUNE.windup*2.4},
+           get cool(){return TUNE.reload*1.8}, get spd(){return TUNE.bullet*1.15}, dmg:2, shots:1,
+           glint:true},
+  /* hold:0 = never stops walking. The Marshal fires WHILE advancing. */
+  bossrifle:{hold:0, fireAt:780, get wind(){return TUNE.windup*1.6},
+           get cool(){return TUNE.reload*1.1}, get spd(){return TUNE.bullet*0.95}, dmg:2, shots:2}
+};
+
+/* ==========================================================
+   THE BOSSES — a cage fight, not another unit you ignore.
+   The block SEALS: you cannot retreat and cannot advance until it is dead.
+   THE DOOR is forced at the mouth of every boss block so you always get to
+   prepare — and the vendor tells you which one is coming.
+   The normal spawner goes quiet: that is what makes it a BREAK in the horde
+   instead of more horde.                        (Talon's design, 2026-11-11)
+   ========================================================== */
+const BOSSES=[
+  {id:"sergeant",name:"THE SERGEANT",face:"🚔",col:"#4f7fb5",trait:"summon",
+   hp:26,speed:38,dmg:2,w:46,h:66,mass:6,
+   tell:"He never comes alone. Put him down before the street fills up.",
+   card:"He brought friends. He always brings friends."},
+  /* dmg was 3 — against a fresh 5-heart wizard that is a TWO-HIT kill, which
+     makes the first boss a coin flip rather than a skill check. His threat is
+     the enrage, not a knockout punch. */
+  {id:"breacher",name:"THE BREACHER",face:"🧱",col:"#8d6a4f",trait:"enrage",
+   hp:40,speed:28,dmg:2,w:54,h:72,mass:9,
+   tell:"Half dead is when he gets fast. Buy embers.",
+   card:"Hit him until he's angry. Then hit him faster."},
+  {id:"marshal", name:"THE MARSHAL", face:"🎖️",col:"#7a5b8a",trait:"advance",
+   hp:24,speed:32,dmg:2,w:46,h:64,mass:5, ranged:"bossrifle",
+   tell:"He shoots while he walks. Standing still is how you die.",
+   card:"He shoots while he walks. Use the doors, or don't. Your funeral."}
+];
+/* with bosses every 10: 10 & 20 plain · 30 & 40 VETERAN · 50+ DREAD */
+const RANKS=[
+  {at:0, name:"",       hpM:1,   shield:0,  unflinch:false, rate:1},
+  {at:25,name:"VETERAN",hpM:1.8, shield:18, unflinch:false, rate:1},
+  {at:45,name:"DREAD",  hpM:3.0, shield:28, unflinch:true,  rate:2}
+];
+/* ⭐ THE BOSS IS THE DISTRICT FINALE, not a tollbooth mid-block.
+   Districts turn over every 10 blocks, so the boss waits at the END of the
+   10th: you clear the whole district, the vendor is right there and tells you
+   what's coming, you step out for the district line — and the wall drops in
+   FRONT of you while something speaks up BEHIND you. (Talon, 2026-11-11.) */
+function isBossBlock(b){ return b>=TUNE.bossEvery-1 && (b+1)%TUNE.bossEvery===0; }
+function rankFor(b){ let r=RANKS[0]; for(const x of RANKS) if(b>=x.at) r=x; return r; }
+/* 🎲 Rolled fresh each encounter. The stats are already parametric by block
+   (base × rank × depth), so a random base automatically gets the right
+   block-10 numbers — replayability for free, no per-floor authoring. */
+function bossDef(b,baseIdx){
+  const base=BOSSES[((baseIdx|0)%BOSSES.length+BOSSES.length)%BOSSES.length];
+  const rank=rankFor(b);
+  /* ⚠️ NOT multiplied by toughHP(). The RANK is the depth scaling — stacking
+     erosion on top made the block-30 Veteran a 240-HP wall nobody ever passed. */
+  const depth=1+0.03*b;
+  return {boss:true,id:base.id,trait:base.trait,rate:rank.rate,tell:base.tell,
+    name:(rank.name?rank.name+" ":"")+base.name, rankName:rank.name,
+    hp:Math.max(6,Math.round(base.hp*rank.hpM*depth*TUNE.bossHpMult)),
+    speed:base.speed, dmg:base.dmg+ (rank.name==="DREAD"?1:0),
+    cost:0, w:base.w, h:base.h, mass:base.mass, card:base.card,
+    stagger:rank.unflinch?0:0.25, col:base.col, face:base.face,
+    shield:rank.shield>0, shieldAmt:Math.round(rank.shield*depth),
+    ranged:base.ranged||null,
+    coin:Math.round(140*(1+b*0.14)*rank.hpM)};
+}
+
+/* 🏙️ DISTRICTS — the street changes every 10 blocks. Pure "look how far
+   I've come", zero mechanics. Cycles, because the street never ends. */
+const DISTRICTS=[
+  {name:"DOWNTOWN",      sky:["#171b2b","#2a2338"],far:"#12151f",wall:"#1d2132",
+   trim:"#262b40",lit:"#39405e",dark:"#1f2437",ground:"#14161f",motes:null},
+  {name:"THE TERRACES",  sky:["#141d24","#243a33"],far:"#101a18",wall:"#17241f",
+   trim:"#20332b",lit:"#2f4c3e",dark:"#1a2b24",ground:"#121a17",motes:null},
+  {name:"THE WORKS",     sky:["#241d14","#3a3224"],far:"#1a1510",wall:"#241d15",
+   trim:"#332a1d",lit:"#4c412f",dark:"#2b2418",ground:"#1a1710",motes:"#8a6a3a"},
+  {name:"THE BURN",      sky:["#2a1414","#4a2418"],far:"#1d1010",wall:"#2a1715",
+   trim:"#3d211c",lit:"#5c3426",dark:"#301a16",ground:"#1c1210",motes:"#ff7a3c"},
+  {name:"THE HOLLOWING", sky:["#101014","#1d1826"],far:"#0b0b0f",wall:"#15141c",
+   trim:"#1f1d2a",lit:"#2c2840",dark:"#191824",ground:"#0f0f14",motes:"#7d6ab5"}
+];
+function districtFor(b){ return DISTRICTS[Math.floor(b/10)%DISTRICTS.length]; }
+
+const VLINES=[
+  "You're bleeding on my floor. Buy something.",
+  "Don't ask. I genuinely do not know either.",
+  "Runes. Coin. Door's behind you.",
+  "You again. Hm.",
+  "I don't want to hear about out there. Pick a rune.",
+  "Still breathing. Impressive. Unwise.",
+  "They've started bringing shields. That's your fault, probably.",
+  "No, I don't take trades. No, I won't explain the door."
+];
+/* said over your corpse when you die holding a fortune you refused to spend */
+const HOARD_LINES=[
+  "You died with {R} runes in your pocket. I'd laugh if I had the energy.",
+  "{R} runes. Unspent. I sold you those, you know.",
+  "All that coin, all those runes, and you were saving them for what, exactly?",
+  "A rich corpse is still a corpse. {R} runes."
+];
+
+/* ==========================================================
+   🔮 THE SIGIL LAYER
+   TWO CURRENCIES OF PROGRESS:
+     DEPTH  — deepest block ever reached. Unlocks WHAT you can buy.
+     SIGILS — earned per run, scaled hard by depth. Decides IF you can afford it.
+   THE RULE: an upgrade must change HOW YOU PLAY, not how big your numbers are.
+   ========================================================== */
+/* 📝 EVERY ENTRY SHOWS THE INCREMENT, NEVER THE CUMULATIVE TOTAL.
+   v0.16 displayed "+3 max heart" to a player holding 2 levels, which reads as
+   "this purchase gives me three." `step` = what ONE carve buys.
+   `now(lv)` = where you are → where you'd be. (Talon, 2026-11-11.)        */
+const SIGILS=[
+  /* Tier I is the ONBOARDING tier — it should feel like movement, so it's cheap.
+     Tier II+ stays expensive: that's where "I grinded for this" lives. */
+  {id:"hardy",   tier:0,icon:"🫀",name:"Hardy",      max:3,cost:[3,6,11],
+   step:"+1 max heart",        now:lv=>`${TUNE.hp+lv} → ${TUNE.hp+lv+1} hearts`},
+  {id:"pockets", tier:0,icon:"🧪",name:"Deep Pockets",max:2,cost:[4,9],
+   step:"+1 poultice carried",  now:lv=>`${TUNE.potMax+lv} → ${TUNE.potMax+lv+1}`},
+  /* was "+2 starting embers" — ≈12 coin in a game where you finish runs with
+     5,000. STARTING RESOURCES ARE WORTHLESS ONCE THE EARLY GAME IS EASY (the
+     same disease that killed Deep Coffers at +8). Salvage pays all run and
+     scales with how deep you get. (Talon, 2026-11-11.) */
+  {id:"salvage", tier:0,icon:"🎒",name:"Salvage",    max:3,cost:[3,6,10],
+   step:"+2.5% rune drop from kills",
+   now:lv=>`${(TUNE.runeDrop+2.5*lv).toFixed(1)}% → ${(TUNE.runeDrop+2.5*(lv+1)).toFixed(1)}%`},
+  {id:"scavenger",tier:0,icon:"🪙",name:"Scavenger", max:2,cost:[5,11],
+   step:"+15% coin from kills", now:lv=>`+${15*lv}% → +${15*(lv+1)}%`},
+
+  {id:"longhex", tier:1,icon:"✦",name:"Long Hex",    max:2,cost:[14,30],
+   step:"+25px hex reach — the big one",
+                                now:lv=>`${hexReach()} → ${hexReach()+25}px`},
+  {id:"nimble",  tier:1,icon:"🔓",name:"Nimble",     max:2,cost:[10,22],
+   step:"pick locks 35% faster",now:lv=>`${pickSecs().toFixed(1)}s → ${(TUNE.pickTime*Math.max(0.2,1-0.35*(lv+1))).toFixed(1)}s`},
+  {id:"twin",    tier:1,icon:"🔥",name:"Twin Ember", max:1,cost:[20],
+   step:"embers punch through one extra body"},
+  {id:"deeplance",tier:1,icon:"⚡",name:"Deep Lance",max:2,cost:[16,34],
+   step:"+2 lance pierce",      now:lv=>`${lancePierce()} → ${lancePierce()+2} bodies`},
+
+  /* "what's in the box" alone is a weak 55 once Nimble makes opening cheap —
+     so it now answers a question Nimble CAN'T: which doors are locked. */
+  {id:"dowsing", tier:2,icon:"🚪",name:"Dowsing",    max:1,cost:[40],
+   step:"see which doors hold a stash — and which are LOCKED — before you try"},
+  /* ⛔ PATRONAGE CUT: it shifted vendEvery by one, which actively un-did the
+     vendor/boss alignment. An upgrade that breaks the game's rhythm is not an
+     upgrade. (Talon: "I don't really like that one.") */
+  {id:"steady",  tier:2,icon:"🩹",name:"Steady Hands",max:1,cost:[70],
+   step:"drinking a poultice no longer roots you"},
+  {id:"secondwind",tier:2,icon:"⏳",name:"Second Wind",max:1,cost:[260],
+   step:"once per run the blow that should kill you doesn't — you come back on 2 hearts and everything near you reels"},
+
+  /* ♾️ TIER IV — THE SINKS. max:0 means INFINITE; cost escalates forever.
+     They unlock BEFORE the capstones on purpose: by the time you can see
+     Mirror Ember you already have somewhere to dump sigils, so every level
+     here is a level you are NOT saving toward the thing that changes the game.
+     That competition IS the point. (Law of Currencies.)
+     ⚠️ Neither one multiplies SIGIL income — that was the Dragon's Hoard
+     runaway ("infinite ember MULTIPLIER = self-compounding"). Both are linear. */
+  /* entry cost 25→14 and 40→22: a sink has to be TEMPTING before the tree is
+     maxed, or it isn't competing with anything. */
+  {id:"deephex", tier:3,icon:"✦",name:"Deep Hex",    max:0,
+   costFn:lv=>Math.ceil(14*Math.pow(1.165,lv)),
+   step:"+3px hex reach — tiny, but it never stops",
+                                now:lv=>`${hexReach()} → ${hexReach()+3}px`},
+  {id:"deepcoffer",tier:3,icon:"🪙",name:"Deep Coffers",max:0,
+   costFn:lv=>Math.ceil(14*Math.pow(1.165,lv)),
+   step:"+20 starting coin — eventually you blast through the early blocks",
+                                now:lv=>`${startCoin()} → ${startCoin()+20} coin`},
+  /* ⭐ DAMAGE HAD TO BECOME AN INFINITE AXIS TOO.
+     Enemy HP scales with depth; rune damage never did. So the Ember's value
+     collapsed as HP grew (it used to one-shot a thug) while the Lance held,
+     because pierce scales with enemy COUNT not enemy HP. The Lance didn't get
+     better — everything else got worse. (Talon found this by ending a block-21
+     run with 0 embers and 55 lances.) */
+  {id:"kindling",tier:3,icon:"🔥",name:"Kindling",   max:0,
+   costFn:lv=>Math.ceil(22*Math.pow(1.205,lv)),
+   step:"+1 ember damage",      now:lv=>`${ARMS.ember.dmg} → ${ARMS.ember.dmg+1} dmg`},
+  {id:"conduction",tier:3,icon:"⚡",name:"Conduction",max:0,
+   costFn:lv=>Math.ceil(22*Math.pow(1.205,lv)),
+   step:"+1 lance damage",      now:lv=>`${ARMS.lance.dmg} → ${ARMS.lance.dmg+1} dmg`},
+
+  /* 🏆 TIER V — THE CAPSTONES. Deliberately brutal. You should SEE these for a
+     long time before you can have them. (Talon: "you get to a certain floor and
+     see this crazy upgrade that you feel like you'll never be able to afford.") */
+  {id:"mirror",  tier:4,icon:"🔥",name:"Mirror Ember",max:1,cost:[1100],
+   step:"embers fire BOTH directions at once"},
+  {id:"hexchain",tier:4,icon:"✦",name:"Hex Chain",   max:1,cost:[900],
+   step:"the hex arcs to a second body behind the first"}
+];
+/* ⚠️ GATES SET BEFORE EROSION EXISTED were 1/10/15/20 — and the Bot Lab proved
+   NO career ever cleared Tier II. The only reachable upgrades were the ones that
+   don't change how you play. A gate must sit at A GOOD RUN, not your BEST EVER. */
+const TIERS=[
+  {gate:1, name:"THE STREET",   blurb:"small, cheap, immediate — get moving"},
+  {gate:8, name:"THE RESPONSE", blurb:"the big step-changes. Buy these first."},
+  {gate:13,name:"THE MACHINE",  blurb:"one-off tricks that change how a run is routed"},
+  {gate:16,name:"THE UNENDING", blurb:"♾️ infinite · small increments, escalating cost — where sigils go once the tree is bought"},
+  {gate:22,name:"THE LAST WORD",blurb:"🏆 the two that change the game itself. You will stare at these for a long time."}
+];
+function sigPrice(s,lv){ return s.max===0 ? s.costFn(lv) : s.cost[lv]; }
+function sigMaxed(s,lv){ return s.max!==0 && lv>=s.max; }
+
+let META={sigils:0,deepest:1,up:{}};
+function metaLoad(){
+  try{ const r=JSON.parse(localStorage.getItem("hexcap_meta"));
+       if(r&&typeof r==="object") META={sigils:r.sigils|0,deepest:Math.max(1,r.deepest|0),up:r.up||{}};
+  }catch(e){}
+}
+function metaSave(){ try{ localStorage.setItem("hexcap_meta",JSON.stringify(META)); }catch(e){} }
+/* 🤖 SIMM = the bot's OWN sigil save during a campaign.
+   Reading the player's META would make lab results depend on whatever happens
+   to be in one save file — a snapshot, not an experiment. A campaign starts
+   from zero every time and is therefore reproducible. (Talon, 2026-11-10.)   */
+let SIMM=null;
+function upg(id){
+  if(SIM) return SIMM?(SIMM.up[id]|0):0;
+  return META.up[id]|0;
+}
+
+/* --- derived stats: every gameplay read goes through these --- */
+function maxHP(){    return TUNE.hp + upg("hardy"); }
+function potCap(){   return TUNE.potMax + upg("pockets"); }
+function hexReach(){ return TUNE.hexRange + 25*upg("longhex") + 3*upg("deephex"); }
+/* 8/level was noise against a 4,000-coin run. 20 also doubles as the SOFT
+   version of the banked "skip the early blocks" prestige — a player with 25
+   levels has earned the right to blast through blocks they've mastered. */
+function startCoin(){ return TUNE.startCoin + 20*upg("deepcoffer"); }
+function pickSecs(){ return TUNE.pickTime * Math.max(0.2,1-0.35*upg("nimble")); }
+function coinMult(){ return TUNE.coinMult * (1+0.15*upg("scavenger")); }
+function vendEvery(){return Math.max(1,TUNE.vendEvery); }
+function runeDropPct(){ return TUNE.runeDrop + 2.5*upg("salvage"); }
+function potSecs(){ return upg("steady")?0:TUNE.potTime; }
+function emberHits(){return 1 + upg("twin"); }
+/* ⚡ the Lance used to pierce EVERYTHING for 11 coin. Now it's a number — and
+   a number is something a Sigil can grow. (Talon's call, 2026-11-10.) */
+function lancePierce(){ return TUNE.lancePierce + 2*upg("deeplance"); }
+
+/* 🔮 DEPTH ALONE.
+   No floor, no coin term, no participation trophy.
+   v0.10's first formula had max(1,…) + a coin term — which paid a sigil for a
+   block-3 suicide run AND paid for farming gold on a safe early block. Two farms
+   in one line. The only way to earn a sigil is to go DEEPER.
+   1–5 → 0 · 6 → 1 · 8 → 3 · 10 → 7 · 12 → 11 · 15 → 19 · 20 → 32            */
+const SIGIL_FREE_BLOCKS=4;
+function sigilsFor(block){
+  return Math.max(0, Math.floor(Math.pow(Math.max(0,block-SIGIL_FREE_BLOCKS),1.6)/2.5));
+}
+function nextSigilBlock(block){            // what depth would actually pay more
+  let b=block+1; while(sigilsFor(b)<=sigilsFor(block)&&b<block+30) b++;
+  return b;
+}
+
+/* ---------------- canvas ---------------- */
+const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+let VH=420, GROUND=336, VW=900;
+
+/* 📱 On a phone the canvas fills the whole screen and the HUD/controls float
+   on top of it — the desktop layout stacked them and pushed the game off the
+   bottom. GROUND becomes relative so the sidewalk is always 84px. */
+const MOBILE = matchMedia("(pointer:coarse)").matches && Math.min(screen.width,screen.height)<900;
+let rotNeeded=false;
+if(MOBILE) document.body.classList.add("mobile");
+
+function resize(){
+  let cssW,cssH;
+  if(MOBILE){
+    cssW=window.innerWidth; cssH=window.innerHeight;
+    rotNeeded = cssH>cssW;
+    document.body.classList.toggle("portrait",rotNeeded);
+  } else {
+    cssW=Math.max(300,cv.parentElement.clientWidth); cssH=420;
+  }
+  VW=Math.round(cssW); VH=Math.round(cssH);
+  /* 🛣️ RAISE THE ROAD ON MOBILE. The thumb clusters live at the bottom, so a
+     ground line 84px up put enemies' feet right under the buttons. There was a
+     pile of unused sky — the band below the road is now a proper foreground
+     sidewalk that the controls sit on. (Talon, 2026-11-12.) */
+  GROUND=Math.round(VH-(MOBILE?Math.min(168,VH*0.40):84));
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.style.width=cssW+"px"; cv.style.height=VH+"px";
+  cv.width=Math.round(cssW*dpr); cv.height=Math.round(VH*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+addEventListener("resize",resize);
+addEventListener("orientationchange",()=>setTimeout(resize,120));
+function hash32(n){
+  n=n|0;n=(n^61)^(n>>>16);n=(n+(n<<3))|0;n=n^(n>>>4);
+  n=Math.imul(n,0x27d4eb2d);n=n^(n>>>15);return (n>>>0)/4294967296;
+}
+function coinOf(d){ return Math.max(0,Math.round(d.coin*coinMult())); }
+
+/* ==========================================================
+   📉 THE EROSION — the engine that makes an endless street endless.
+   Enemy HP (and, slowly, damage) scale with depth. COIN DOES NOT.
+   So your profit per kill shrinks the deeper you go: a brute at block 40
+   takes seven embers instead of two and still pays 16. The stockpile
+   drains instead of growing. That is the wall — soft, economic, gradual.
+   Every Sigil pushes it further out. THAT is what the meta layer is for.
+   ========================================================== */
+/* ⭐ GRACE PERIOD. v0.11 scaled linearly from block 1, which meant block 8 was
+   already ×1.44 — it nerfed the EARLY game to fix a LATE-game problem. Nothing
+   scales until block 6; after that it bites harder than before.
+   A difficulty ramp must bite WHERE THE PROBLEM IS, not everywhere. */
+function toughHP(b){  return 1 + TUNE.hpRamp *Math.max(0,b-TUNE.grace); }
+function toughDMG(b){ return Math.min(3, 1 + TUNE.dmgRamp*Math.max(0,b-TUNE.grace)); }
+
+/* ---------------- street ---------------- */
+let doors=new Map();
+/* ⭐ COUNTED THE SAME WAY BOSSES ARE, so the two rhythms share a beat.
+   Vendors land on blocks 5/10/15/20 — which means blocks 10 and 20 are ALREADY
+   vendor blocks, and the boss's "forced" door simply IS that block's vendor.
+   Before this, vendors ran on b%3 and bosses on (b+1)%10, producing a shop on
+   block 19 and another on block 20. (Talon, 2026-11-11.) */
+function isVendorBlock(b){ return (b+1)%vendEvery()===0; }
+function blocksToVendor(b){ const V=vendEvery(); return (V-((b+1)%V))%V; }
+function doorsForBlock(b){
+  if(doors.has(b)) return doors.get(b);
+  const list=[],len=TUNE.blockLen,start=b*len;
+  /* A BOSS BLOCK IS BUILT, NOT ROLLED: THE DOOR at the mouth so you can always
+     prepare, then exactly three doorways in the arena, the middle one locked.
+     The arena is made out of the mechanics we already have — not an exception. */
+  if(isBossBlock(b)){
+    /* first half plays like a normal block, then THE DOOR at the halfway mark,
+       then three COVER doorways inside the arena, the middle one locked */
+    list.push({x:start+len*0.16, locked:false, known:false, looted:false,
+               spent:false, w:46, vendor:false, roll:hash32(b*313+7)});
+    /* THE DOOR sits just before the cage mouth — this IS the block's vendor */
+    /* right at the line: buy, step out, and it's on you */
+    list.push({x:start+len*0.95,locked:false,known:true,looted:true,spent:false,
+               w:54,vendor:true,roll:1});
+    for(let i=0;i<3;i++)                        // three COVER doors inside the cage
+      list.push({x:start+len*(0.765+i*0.078), locked:i===1, known:false,
+                 looted:false, spent:false, w:46, vendor:false,
+                 roll:hash32(b*313+i*29+13)});
+    doors.set(b,list); return list;
+  }
+  const count=Math.max(1,Math.round(len/TUNE.doorGap));
+  for(let i=0;i<count;i++){
+    const jit=(hash32(b*977+i*31)-0.5)*(len/count)*0.45;
+    const x=start+(i+0.5)*(len/count)+jit;
+    const locked=(b===0&&i===0)?false:hash32(b*541+i*7+13)<(TUNE.lockedPct/100);
+    // stash is decided when the street is GENERATED, not when you open the door —
+    // otherwise Dowsing would have nothing to see.
+    list.push({x,locked,known:false,looted:false,spent:false,w:46,vendor:false,
+               roll:hash32(b*313+i*29+7)});
+  }
+  /* "at the end of block five" — a waypoint you walk toward, not a doorstep */
+  if(isVendorBlock(b)) list.push({x:start+len*0.95,locked:false,known:true,looted:true,
+                                  spent:false,w:54,vendor:true,roll:1});
+  doors.set(b,list); return list;
+}
+function nearbyDoor(px){
+  const b=Math.floor(px/TUNE.blockLen); let best=null,bd=1e9;
+  for(let k=b-1;k<=b+1;k++){
+    if(k<0) continue;
+    for(const d of doorsForBlock(k)){
+      if(d.vendor&&d.spent) continue;
+      const dist=Math.abs(d.x-px); if(dist<bd){bd=dist;best=d;}
+    }
+  }
+  /* THE DOOR gets a wider catch radius — now that it sits at 95% of the block,
+     right before the district line, missing it by a few pixels would mean
+     walking into a boss unprepared. */
+  return (best && bd <= (best.vendor?58:36)) ? best : null;
+}
+
+/* ---------------- state ---------------- */
+let P,enemies,bolts,ebolts,zaps,parts,floats,cam,budget,burstT,blockIdx,kills,
+    dead,paused,shopOpen,shake,bannerT,lastX,led,shopDoor,arena;
+let best=+(localStorage.getItem("hexcap_best")||0);
+
+/* 🤖 SIM = headless. BOT = the policy currently driving input.
+   The bots run the REAL step(). There is no second simulation. */
+let SIM=false, BOT=null, sigOpen=false;
+
+function reset(){
+  doors=new Map();
+  P={x:60,y:GROUND,face:1,hp:maxHP(),coin:startCoin(),
+     runes:{ember:TUNE.startEmber,lance:0},
+     pots:Math.min(potCap(),1), potT:0, wind:upg("secondwind")>0, sel:"hex",
+     cd:0,hidden:false,door:null,doorCD:0,entryT:0,entryDoor:null,
+     pickP:0,pickDoor:null,pickFlash:0,hurtT:0,maxX:60,casting:0,hexing:0};
+  enemies=[];bolts=[];ebolts=[];zaps=[];parts=[];floats=[];
+  cam=0;budget=2;burstT=1.4;blockIdx=0;kills=0;lastX=60;
+  arena={active:false,lo:0,hi:0,boss:null,summonT:0,bossMax:1,
+         pending:null,trigger:0,block:0,cine:0};
+  dead=false;paused=false;shopOpen=false;shake=0;bannerT=0;shopDoor=null;
+  led={earn:0,spend:0,fired:0,hex:0,stash:0,pick:0,back:0,shield:0,
+       pop:0, runeCost:0, runeKillCoin:0};
+  if(SIM) return;
+  sigOpen=false;
+  ["over","shop","pz","sig"].forEach(id=>document.getElementById(id).style.display="none");
+  document.getElementById("pauseBtn").textContent="⏸ PAUSE";
+  banner("BLOCK 1"); hud();
+}
+function banner(t){
+  if(SIM) return;
+  const el=document.getElementById("banner");
+  el.textContent=t; el.style.opacity=1; bannerT=1.6;
+}
+
+/* ---------------- input ---------------- */
+const keys={},held={left:false,right:false,cast:false};
+
+/* ==========================================================
+   ⌨️ INPUT HYGIENE — three real bugs lived here
+   ① window blur with a key held → the keyup never arrives and the
+      key stays pressed FOREVER. (This is what walked Talon into a mob.)
+   ② a clicked button keeps focus → Space re-activates it instead of casting,
+      so pressing cast would pause the game.
+   ③ a dragged slider keeps focus → arrow keys move the SLIDER, not the wizard.
+   ========================================================== */
+function clearInput(){
+  for(const k in keys) keys[k]=false;
+  held.left=held.right=held.cast=false;
+  for(const k in holders) delete holders[k];
+  document.querySelectorAll("#pad button").forEach(b=>b.classList.remove("on"));
+  slideEnd();                                   // 🕹️ v0.19: a lost thumb must never keep walking
+}
+addEventListener("blur",clearInput);
+addEventListener("focus",clearInput);
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) clearInput(); });
+/* only release the finger that actually lifted — never the other thumb */
+addEventListener("pointerup",e=>{
+  const p=holders[e.pointerId];
+  if(p){ delete holders[e.pointerId]; held[p]=false;
+         if(holdEls[p]) holdEls[p].classList.remove("on"); }
+  const t=e.target;
+  if(t&&t.tagName==="INPUT"&&t.type==="range") t.blur();   // ③ sliders never keep focus
+});
+/* iOS ignores user-scalable=no, so kill pinch/double-tap zoom directly */
+addEventListener("gesturestart",e=>e.preventDefault(),{passive:false});
+addEventListener("gesturechange",e=>e.preventDefault(),{passive:false});
+addEventListener("dblclick",e=>e.preventDefault(),{passive:false});
+/* …and the loupe/magnifier on a long press needs touchstart killed explicitly.
+   pointerdown.preventDefault() is NOT enough on iOS. */
+addEventListener("DOMContentLoaded",()=>{},{once:true});
+["#pad button","#hud button",".arm"].forEach(sel=>{
+  document.querySelectorAll(sel).forEach(el=>{
+    el.addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
+    el.addEventListener("contextmenu",e=>e.preventDefault());
+  });
+});
+// ② buttons never keep focus, so Space is always "cast"
+addEventListener("click",e=>{ const t=e.target; if(t&&t.tagName==="BUTTON") t.blur(); });
+// typing in the Bot Lab's number box must not drive the wizard
+function typingInBox(e){
+  const t=e.target;
+  return !!(t&&(t.tagName==="TEXTAREA"||t.isContentEditable||
+    (t.tagName==="INPUT"&&t.type!=="range"&&t.type!=="checkbox")));
+}
+
+addEventListener("keydown",e=>{
+  if(typingInBox(e)) return;
+  if(["ArrowLeft","ArrowRight","ArrowDown","Space"].includes(e.code)) e.preventDefault();
+  if(keys[e.code]) return; keys[e.code]=true;
+  if(e.code==="KeyS"||e.code==="ArrowDown") doorAction();
+  if(e.code==="KeyR") reset();
+  if(e.code==="KeyP") togglePause();
+  if(e.code==="Digit1") select("hex");
+  if(e.code==="Digit2") select("ember");
+  if(e.code==="Digit3") select("lance");
+  if(e.code==="KeyQ") cycle(-1);
+  if(e.code==="KeyE") cycle(1);
+  if(e.code==="Digit4") usePoultice();
+});
+addEventListener("keyup",e=>{keys[e.code]=false;});   // never gated — a release must ALWAYS register
+/* 👐 MULTI-TOUCH, DONE PROPERLY.
+   The old version cleared held.left/right/cast on ANY pointerup — so holding
+   RIGHT with the left thumb and tapping CAST with the right thumb meant
+   releasing CAST also released RIGHT. Two-thumb play fought itself, and it
+   felt exactly like "the button didn't register." (Talon died to it.)
+   Now every finger owns its own button by pointerId, and pointer capture keeps
+   a thumb that slides slightly off the edge working. */
+const holders={};                     // pointerId -> prop
+const holdEls={};                     // prop -> element
+function bindHold(id,prop){
+  const el=document.getElementById(id); holdEls[prop]=el;
+  el.addEventListener("pointerdown",e=>{
+    e.preventDefault();
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+    holders[e.pointerId]=prop; held[prop]=true; el.classList.add("on");
+  });
+  const release=e=>{
+    if(holders[e.pointerId]!==prop) return;
+    delete holders[e.pointerId]; held[prop]=false; el.classList.remove("on");
+  };
+  el.addEventListener("pointerup",release);
+  el.addEventListener("pointercancel",release);
+}
+bindHold("bL","left"); bindHold("bR","right"); bindHold("bCast","cast");
+document.getElementById("bDoor").addEventListener("pointerdown",e=>{e.preventDefault();doorAction();});
+/* the right-thumb weapon strip — same handler as the desktop chips */
+document.querySelectorAll("#padArms [data-w]").forEach(el=>{
+  el.addEventListener("pointerdown",e=>{e.preventDefault();select(el.dataset.w);});
+});
+document.getElementById("pPot").addEventListener("pointerdown",e=>{e.preventDefault();usePoultice();});
+
+/* 🕹️ v0.19 THUMBS — the left half of the screen is a slide zone.
+   WHY: on the phone, ◀ ▶ were two separate buttons that each CAPTURE their
+   finger (that capture is what fixed the multi-touch bug). So you couldn't roll
+   from one to the other: every direction change was lift → aim → re-tap a 70px
+   target. Kiting is nothing BUT direction changes. On a keyboard A/D sit under
+   two fingers, which is why the PC "just feels right."
+   ▸ Thumb down anywhere on the left half, slide → move that way.
+   ▸ The anchor TRAILS the thumb (SL.ROLL px behind), so reversing is a short roll,
+     not a trip back across the screen. Lift to stop.
+   ▸ Quick TAP (no slide) → turn to face that side WITHOUT stepping. That's the
+     kite: step away, tap back toward them, CAST.
+   ▸ Swipe UP → into the doorway (up the steps). Swipe DOWN → back out to the
+     street. Down on the open street does nothing, so a drifting thumb can't
+     accidentally dive into a door mid-kite.
+   Facing is still a commitment the player makes. Input Law untouched. */
+const CTRL={mode:"slide",size:1};
+try{ Object.assign(CTRL,JSON.parse(localStorage.getItem("hexcap_ctrl")||"{}")); }catch(_){}
+function applyCtrl(){
+  document.body.classList.toggle("slideMode",CTRL.mode==="slide");
+  document.documentElement.style.setProperty("--bs",CTRL.size);
+  const m=document.getElementById("ctrlMode"); if(m) m.textContent=CTRL.mode==="slide"?"🕹️ SLIDE":"🔘 BUTTONS";
+  const s=document.getElementById("ctrlSize"); if(s) s.value=CTRL.size;
+  try{ localStorage.setItem("hexcap_ctrl",JSON.stringify(CTRL)); }catch(_){}
+}
+document.getElementById("ctrlMode").addEventListener("click",()=>{
+  CTRL.mode=CTRL.mode==="slide"?"buttons":"slide"; clearInput(); applyCtrl(); });
+document.getElementById("ctrlSize").addEventListener("input",e=>{
+  CTRL.size=Math.max(0.8,Math.min(1.4,+e.target.value||1)); applyCtrl(); });
+
+const SL={DEAD:10, ROLL:22, TAP_MS:220, TAP_MOVE:14, SWIPE:42};   // px / ms
+const slideEl=document.getElementById("slide");
+const slideRing=document.getElementById("slideRing"), slideKnob=document.getElementById("slideKnob");
+let slid=null;      // {id,x0,y0,ax,t0,max,state:"?"|"move"|"done"}
+function slideBusy(){ return P.hidden||P.entryT>0||P.pickP>0||P.potT>0; }
+function slideXY(e){ const r=slideEl.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top,r]; }
+function slideSwipe(dir){
+  const inDoorway=P.hidden||P.entryT>0||P.pickP>0;
+  if(dir==="up"  && !inDoorway) doorAction();   // enter / pick a known lock / open the vendor
+  if(dir==="down"&&  inDoorway) doorAction();   // step back out (or cancel entering/picking)
+}
+function slideEnd(){
+  if(!slid) return;
+  slid=null; held.left=false; held.right=false;
+  if(slideRing){ slideRing.style.display="none"; slideKnob.style.display="none"; }
+}
+slideEl.addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
+slideEl.addEventListener("contextmenu",e=>e.preventDefault());
+slideEl.addEventListener("pointerdown",e=>{
+  e.preventDefault();
+  if(slid||dead||paused||shopOpen) return;
+  try{ slideEl.setPointerCapture(e.pointerId); }catch(_){}
+  const [x,y]=slideXY(e);
+  slid={id:e.pointerId,x0:e.clientX,y0:e.clientY,ax:e.clientX,t0:performance.now(),max:0,state:"?"};
+  slideRing.style.left=x+"px"; slideRing.style.top=y+"px"; slideRing.style.display="block";
+  slideKnob.style.left=x+"px"; slideKnob.style.top=y+"px"; slideKnob.style.display="block";
+  const h=document.getElementById("slideHint"); if(h) h.style.opacity="0";
+});
+slideEl.addEventListener("pointermove",e=>{
+  if(!slid||e.pointerId!==slid.id) return;
+  const dx=e.clientX-slid.x0, dy=e.clientY-slid.y0;
+  slid.max=Math.max(slid.max,Math.hypot(dx,dy));
+  const [x,y]=slideXY(e);
+  slideKnob.style.left=x+"px"; slideKnob.style.top=y+"px";
+  if(slid.state==="?"){
+    if(Math.abs(dy)>SL.SWIPE&&Math.abs(dy)>1.5*Math.abs(dx)){ slideSwipe(dy<0?"up":"down"); slid.state="done"; return; }
+    if(Math.abs(dx)>SL.DEAD&&Math.abs(dx)>=Math.abs(dy)) slid.state="move"; else return;
+  }
+  if(slid.state!=="move") return;
+  let d=e.clientX-slid.ax;                       // the anchor trails the thumb
+  if(d> SL.ROLL) slid.ax=e.clientX-SL.ROLL;
+  if(d<-SL.ROLL) slid.ax=e.clientX+SL.ROLL;
+  d=e.clientX-slid.ax;
+  held.right=d>2; held.left=d<-2;
+  const r=slideEl.getBoundingClientRect();
+  slideRing.style.left=(slid.ax-r.left)+"px";
+});
+const slideUp=e=>{
+  if(!slid||e.pointerId!==slid.id) return;
+  if(slid.state==="?"){
+    const dt=performance.now()-slid.t0, dx=e.clientX-slid.x0, dy=e.clientY-slid.y0;
+    if(Math.abs(dy)>SL.SWIPE&&Math.abs(dy)>1.5*Math.abs(dx)) slideSwipe(dy<0?"up":"down");   // a flick faster than pointermove
+    else if(dt<SL.TAP_MS&&slid.max<SL.TAP_MOVE&&!dead&&!paused&&!shopOpen&&!slideBusy()){
+      const r=slideEl.getBoundingClientRect();
+      P.face = (e.clientX < r.left+r.width/2) ? -1 : 1;                  // 👆 turn in place
+      puff(P.x+P.face*14,GROUND-40,"#8b85ff",3);
+    }
+  }
+  slideEnd();
+};
+slideEl.addEventListener("pointerup",slideUp);
+slideEl.addEventListener("pointercancel",slideUp);
+applyCtrl();   // (fullscreen-on-tap still fires: the zone lives inside #stage, whose listener catches the bubble)
+
+document.getElementById("again").addEventListener("click",reset);
+document.getElementById("leave").addEventListener("click",closeShop);
+document.getElementById("pauseBtn").addEventListener("click",togglePause);
+document.getElementById("resume").addEventListener("click",togglePause);
+document.querySelectorAll(".arm[data-w]").forEach(el=>{
+  el.addEventListener("pointerdown",e=>{e.preventDefault();select(el.dataset.w);});
+});
+document.getElementById("potChip").addEventListener("pointerdown",e=>{e.preventDefault();usePoultice();});
+
+/* 🧪 Carryable, hard-capped, and it ROOTS you. You cannot chug mid-fight. */
+function usePoultice(){
+  if(dead||paused||shopOpen) return;
+  // usable INSIDE a doorway on purpose: safe-but-earning-nothing is
+  // exactly when you should be drinking.
+  if(P.pots<=0||P.hp>=maxHP()||P.potT>0) return;
+  P.pots--;
+  if(potSecs()<=0){                        // 🩹 Steady Hands — no root at all
+    P.hp=Math.min(maxHP(),P.hp+1);
+    floats.push({x:P.x,y:GROUND-84,txt:"❤️ +1",col:"#ff6b8b",t:1.1,vy:-28,big:true});
+    puff(P.x,GROUND-44,"#ff6b8b",8); hud(); return;
+  }
+  P.potT=potSecs(); hud();
+}
+/* Gated on SIM too: if a lab run ever throws and leaves BOT set, the player's
+   controls would silently go dead. Belt and braces. */
+const botIn=()=>(SIM&&BOT)?BOT.in:null;
+function wantLeft(){ const b=botIn(); return b?b.left :(keys.KeyA||keys.ArrowLeft||held.left); }
+function wantRight(){const b=botIn(); return b?b.right:(keys.KeyD||keys.ArrowRight||held.right);}
+function wantCast(){ const b=botIn(); return b?b.cast :(keys.Space||keys.KeyJ||held.cast); }
+function togglePause(){
+  if(dead||shopOpen) return;
+  paused=!paused;
+  document.getElementById("pz").style.display=paused?"flex":"none";
+  document.getElementById("pauseBtn").textContent=paused?"▶ RESUME":"⏸ PAUSE";
+}
+function select(w){ if(w!=="hex"&&(P.runes[w]||0)<=0) return; P.sel=w; hud(); }
+function cycle(d){
+  const order=["hex","ember","lance"]; let i=order.indexOf(P.sel);
+  for(let n=0;n<3;n++){ i=(i+d+3)%3; const w=order[i];
+    if(w==="hex"||(P.runes[w]||0)>0){P.sel=w;hud();return;} }
+}
+
+/* ---------------- doors ---------------- */
+function doorAction(){
+  if(dead||paused||shopOpen||P.doorCD>0) return;
+  if(P.hidden){ P.hidden=false;P.door=null;P.doorCD=0.25;
+    for(const e of enemies) e.idle=0; puff(P.x,GROUND-20,"#8b85ff",7); return; }
+  if(P.pickP>0){ P.pickP=0;P.pickDoor=null; return; }
+  if(P.entryT>0){ P.entryT=0;P.entryDoor=null; return; }
+  const d=nearbyDoor(P.x); if(!d) return;
+  if(d.vendor){ openShop(d); return; }
+  if(d.known&&d.locked){ P.pickDoor=d; P.pickP=0.0001; return; }
+  P.entryT=TUNE.entry; P.entryDoor=d;
+}
+function finishEntry(){
+  const d=P.entryDoor; P.entryDoor=null; P.entryT=0; if(!d) return;
+  d.known=true;
+  if(d.locked){
+    floats.push({x:P.x,y:GROUND-66,txt:"LOCKED!",col:"#ff6b8b",t:1.0,vy:-26});
+    floats.push({x:P.x,y:GROUND-86,txt:"press again to pick it",col:"#8e89a8",t:1.6,vy:-14});
+    puff(d.x,GROUND-40,"#6f6b85",5); P.doorCD=0.2; return;
+  }
+  enterDoor(d,1);
+}
+function enterDoor(d,lootMult){
+  P.hidden=true;P.door=d;P.doorCD=0.25;
+  puff(P.x,GROUND-20,"#2d6cff",7);
+  if(!d.looted){ const was=d; d.looted=true; rollStash(lootMult,was); }
+}
+function hasStash(d,mult){
+  return d&&!d.vendor&&!d.looted&&(d.roll*100 < Math.min(100,TUNE.stash*(mult||(d.locked?TUNE.lockedLoot:1))));
+}
+function rollStash(mult,d){
+  mult=mult||1;
+  if(d&&!(d.roll*100<Math.min(100,TUNE.stash*mult))) return;
+  led.stash++;
+  const r=Math.random()/mult; let txt,col;
+  if(r<0.42){ const c=Math.round((3+Math.random()*10)*mult); P.coin+=c; led.earn+=c; txt="🪙 +"+c; col="#ffd166"; }
+  else if(r<0.82){ const n=Math.max(1,Math.round((1+Math.random()*2)*mult));
+    P.runes.ember=(P.runes.ember||0)+n; txt="🔥 +"+n; col="#ff8c42"; }
+  else if(r<0.95){ const n=Math.max(1,Math.round(mult));
+    P.runes.lance=(P.runes.lance||0)+n; txt="⚡ +"+n; col="#c08bff"; }
+  else { if(P.hp<maxHP()){P.hp++;txt="❤️ +1";col="#ff6b8b";}
+         else {P.coin+=12;led.earn+=12;txt="🪙 +12";col="#ffd166";} }
+  floats.push({x:P.x,y:GROUND-82,txt:"A STASH!",col:"#fff",t:1.4,vy:-22});
+  floats.push({x:P.x,y:GROUND-104,txt,col,t:1.6,vy:-26,big:true});
+  hud();
+}
+
+/* ---------------- shop ---------------- */
+function openShop(d){
+  if(SIM){                      // bots shop instantly via their buy policy
+    if(BOT&&BOT.buy) BOT.buy();
+    d.spent=true; P.x+=70; if(P.x>P.maxX) P.maxX=P.x;
+    return;
+  }
+  shopOpen=true; shopDoor=d;
+  /* ⭐ On a boss block he TELLS YOU WHAT'S COMING — which is the whole reason
+     the vendor is forced here. Preparation only means something if you know. */
+  const warn = arena.pending || (arena.active&&arena.boss?arena.boss.def:null);
+  if(isBossBlock(blockIdx)&&warn){
+    const def=warn;
+    document.getElementById("vline").innerHTML=
+      `<span style="color:#ff6b8b;font-style:normal;font-weight:bold">${def.face} ${def.name} is waiting at the district line.</span><br>"${def.tell}"`;
+  } else {
+    document.getElementById("vline").textContent=VLINES[(Math.random()*VLINES.length)|0];
+  }
+  renderShop(); document.getElementById("shop").style.display="flex";
+}
+function closeShop(){
+  shopOpen=false; if(shopDoor) shopDoor.spent=true; shopDoor=null;
+  document.getElementById("shop").style.display="none";
+  P.x+=70; if(P.x>P.maxX) P.maxX=P.x; hud();
+}
+function renderShop(){
+  document.getElementById("shopCoin").textContent=P.coin;
+  document.getElementById("shopHP").textContent=
+    "❤️".repeat(Math.max(0,P.hp))+"🖤".repeat(Math.max(0,maxHP()-Math.max(0,P.hp)));
+  /* 🩹 MEND and 🧪 POULTICE are deliberately separate purchases.
+     The Door is the one safe moment in a run — healing there should be
+     limited by your wallet and nothing else. Poultices are the FIELD reserve. */
+  const defs=[
+    {k:"ember",t:"🔥 EMBER",d:"Heavy, long range. The brute-killer.",c:()=>TUNE.emberCost},
+    {k:"lance",t:"⚡ LANCE",d:"Pierces everything in the line.",c:()=>TUNE.lanceCost},
+    {k:"mend", t:"🩹 MEND",   d:"One heart back, right here, right now.",c:()=>TUNE.mendCost},
+    {k:"pot",  t:"🧪 POULTICE",d:"Carry it out. Drinking roots you.",c:()=>TUNE.potCost}
+  ];
+  const wrap=document.getElementById("buys"); wrap.innerHTML="";
+  for(const def of defs){
+    const price=def.c(); const el=document.createElement("div"); el.className="buy";
+    const own = def.k==="pot"  ? ` &nbsp;<span style="color:#8e89a8">have ${P.pots}/${potCap()}</span>`
+              : def.k==="mend" ? ` &nbsp;<span style="color:#8e89a8">${P.hp}/${maxHP()} ❤️</span>`
+              : ` &nbsp;<span style="color:#8e89a8">have ${P.runes[def.k]||0}</span>`;
+    el.innerHTML=`<div class="t">${def.t}${own}</div><div class="d">${def.d}</div>
+      <button>BUY — 🪙${price}</button>
+      <div class="row2"><button>×5 — 🪙${price*5}</button><button>MAX</button></div>`;
+    const [b1,b5,bm]=el.querySelectorAll("button");
+    const room=n=>def.k==="pot" ? P.pots+n<=potCap()
+               : def.k==="mend" ? P.hp<maxHP()
+               : true;
+    const can=n=>P.coin>=price*n&&room(1);
+    b1.disabled=!can(1); b5.disabled=!can(5); bm.disabled=!can(1);
+    const doBuy=n=>{
+      for(let i=0;i<n;i++){
+        if(P.coin<price) break;
+        if(def.k==="mend"){ if(P.hp>=maxHP()) break; P.hp++; }
+        else if(def.k==="pot"){ if(P.pots>=potCap()) break; P.pots++; }
+        else P.runes[def.k]=(P.runes[def.k]||0)+1;
+        P.coin-=price; led.spend+=price;
+      }
+      renderShop(); hud();   // never changes P.sel
+    };
+    b1.onclick=()=>doBuy(1); b5.onclick=()=>doBuy(5);
+    bm.onclick=()=>doBuy(Math.floor(P.coin/price));
+    wrap.appendChild(el);
+  }
+}
+
+/* ---------------- fx ---------------- */
+function puff(x,y,col,n){
+  for(let i=0;i<n;i++) parts.push({x,y,vx:(Math.random()-0.5)*150,
+    vy:-Math.random()*130-20,r:2+Math.random()*3,col,t:0.45+Math.random()*0.35});
+}
+function splat(x,y){
+  for(let i=0;i<11;i++) parts.push({x,y,vx:(Math.random()-0.5)*260,
+    vy:-Math.random()*200-40,r:2+Math.random()*4,col:"#d6304e",t:0.5+Math.random()*0.5});
+}
+
+/* ---------------- spawn: weight curves ---------------- */
+function cap(){ return Math.min(TUNE.capMax,TUNE.baseCap+Math.floor(blockIdx/3)); }
+function weightFor(d,b){
+  if(b<d.from) return 0;
+  let w=d.wt*Math.min(1,(b-d.from+1)/(d.rampB||1));
+  if(d.fade&&b>d.fade) w*=Math.max(0.18,1-(b-d.fade)*0.1);   // rise, peak, fade to chaff
+  return w;
+}
+function pickEnemy(budgetLeft){
+  const c=[]; let tot=0;
+  for(const k in ENEMIES){
+    const d=ENEMIES[k]; if(d.cost>budgetLeft) continue;
+    const w=weightFor(d,blockIdx); if(w>0){ c.push([d,w]); tot+=w; }
+  }
+  if(!c.length) return null;
+  let r=Math.random()*tot;
+  for(const x of c){ r-=x[1]; if(r<=0) return x[0]; }
+  return c[c.length-1][0];
+}
+/* the cage closes */
+/* 🎲 rolled on ENTERING the block, so the vendor at the halfway mark can warn you */
+function armBoss(b){
+  arena.pending=bossDef(b,(Math.random()*BOSSES.length)|0);
+  /* ⭐ THE TRIGGER IS THE LINE ITSELF. It used to fire at 82% of the block,
+     so the boss appeared and you kept running another 500px before anything
+     stopped you — cause and effect in the wrong order. Now you walk, you
+     reach the district line, and THAT is what seals the street.
+     (Talon, 2026-11-11.) */
+  arena.trigger=b*TUNE.blockLen+TUNE.blockLen-18-24;
+  arena.block=b;
+}
+/* the cage closes: the wall drops AHEAD at the district line,
+   and the boss speaks up BEHIND you */
+function startBoss(){
+  const b=arena.block, len=TUNE.blockLen, def=arena.pending;
+  if(!def) return;
+  arena.pending=null;
+  /* a fixed ~820px cage, not a fraction of the block: narrow enough that BOTH
+     barriers are on screen at once, so it reads as a cage instead of "a long
+     street with a wall somewhere behind me". (Talon, 2026-11-11.) */
+  const hi=b*len+len-18, lo=hi-TUNE.arenaWide;
+  const e=makeEnemy(def, Math.max(lo+30, P.x-230), 1);   // a beat of warning
+  e.isBoss=true; e.lane=0;
+  e.grace=TUNE.bossGrace;            // he arrives, THEN he starts working
+  enemies.push(e);
+  /* 🧹 "the horde goes quiet" was only half true — the spawner stopped but
+     anything already inside the cage stayed, so a Marshal could arrive on top
+     of a live gunner. That isn't a boss fight, it's an ambush. The walls now
+     clear the arena. (Summons still come — that's the Sergeant's threat.) */
+  for(const en of enemies){
+    if(en===e||en.hp<=0) continue;
+    if(en.x>lo-140&&en.x<hi+140){ en.hp=-99; if(!SIM) puff(en.x,GROUND-30,"#6f6b85",5); }
+  }
+  arena.active=true; arena.lo=lo; arena.hi=hi; arena.boss=e;
+  arena.summonT=TUNE.summonEvery; arena.bossMax=e.hpMax;
+  arena.cine=SIM?0:TUNE.bossCard;    // 🎬 time stops for the title card
+  banner("");
+  if(!SIM) shake=1;
+}
+
+function spawnBurst(){
+  if(arena.active) return;          // the horde goes quiet for the boss
+  let spend=1+Math.random()*2;
+  while(spend>0&&budget>0&&enemies.length<cap()){
+    const d=pickEnemy(budget); if(!d) break;
+    budget-=d.cost; spend-=d.cost;
+    // nothing creeps up behind you before you've started walking
+    const allowBehind = P.maxX>300;
+    const behind = allowBehind && Math.random()<TUNE.behindPct/100;
+    const n=d.group||1;
+    // snipers set up far back, so they stay a long-range problem for a while
+    const far = (d.ranged==="rifle") ? 330 : 70;
+    for(let i=0;i<n;i++) enemies.push(makeEnemy(d, behind?cam-far-i*26:cam+VW+far+i*26, behind?1:-1));
+  }
+}
+function makeEnemy(d,x,dir){
+  /* bosses carry their own depth scaling — erosion on top was double-counting */
+  const T=d.boss?1:toughHP(blockIdx);
+  const hp=Math.max(1,Math.round(d.hp*T));
+  const sh=d.shield?Math.round((d.shieldAmt||TUNE.shieldHp)*T):0;
+  return {def:d,x,hp,hpMax:hp,dmg:Math.max(1,Math.round(d.dmg*(d.boss?1:toughDMG(blockIdx)))),
+          dir,facing:dir,turnT:0,
+          shieldHp:sh, shieldMax:sh,
+          lane:(Math.random()*3)|0,                 // depth lane — crowds must READ as crowds
+          hitCD:0,flash:0,idle:0,stun:0,bob:Math.random()*6,
+          aim:0,reload:0.6+Math.random()*1.2};
+}
+
+/* ---------------- loop ---------------- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(SIM){ requestAnimationFrame(frame); return; }   // bots own the world right now
+  /* 🎬 the entrance: time stops for the title card */
+  if(arena&&arena.cine>0){
+    arena.cine-=dt;
+    /* 🐛 shake decays in step(), and the cinema SKIPS step() — so the screen
+       rattled for the entire card and the name was unreadable. Let the street
+       settle while the card holds. (Talon, 2026-11-11.) */
+    shake=Math.max(0,shake-dt*2.2);
+    draw(); requestAnimationFrame(frame); return;
+  }
+  if(!dead&&!paused&&!shopOpen&&!sigOpen&&!rotNeeded) step(dt);   // sideways or nothing
+  draw(); requestAnimationFrame(frame);
+}
+
+function hitEnemy(e,dmg,fromDir,isHex,src){
+  /* fromDir = the direction the attack TRAVELS.
+     The attack lands on the enemy's FRONT when the enemy is facing back
+     along it — i.e. e.facing === -fromDir. Otherwise it's a back hit.     */
+  const facingAttacker = (e.facing === -fromDir);
+
+  if(e.def.shield && e.shieldHp>0 && facingAttacker){
+    e.shieldHp-=dmg; e.flash=0.16;
+    puff(e.x+e.facing*20,GROUND-34,"#cfd6df",4);
+    if(e.shieldHp<=0){
+      led.shield++;
+      floats.push({x:e.x,y:GROUND-e.def.h-14,txt:"SHIELD BROKEN!",col:"#cfd6df",t:1.3,vy:-28});
+      puff(e.x,GROUND-34,"#cfd6df",12);
+    }
+    return;                                   // the shield ate it
+  }
+  if(e.def.shield && !facingAttacker && e.shieldHp>0){
+    led.back++;
+    floats.push({x:e.x,y:GROUND-e.def.h-14,txt:"BACK!",col:"#5ec27a",t:0.8,vy:-30});
+  }
+  e.hp-=dmg; e.flash=0.16;
+  if(isHex){
+    const s=TUNE.hexStun*(e.def.stagger||0);
+    if(s>0) e.stun=Math.max(e.stun,s);
+  }
+  if(e.hp<=0) killed(e,src||(isHex?"hex":"rune"));
+}
+
+function step(dt){
+  P.cd=Math.max(0,P.cd-dt); P.doorCD=Math.max(0,P.doorCD-dt);
+  P.hurtT=Math.max(0,P.hurtT-dt); P.casting=Math.max(0,P.casting-dt);
+  P.hexing=Math.max(0,P.hexing-dt); P.pickFlash=Math.max(0,P.pickFlash-dt);
+  shake=Math.max(0,shake-dt*3.4);
+
+  if(P.entryT>0){ P.entryT-=dt; if(P.entryT<=0) finishEntry(); }
+
+  if(P.potT>0){
+    P.potT-=dt;
+    if(P.potT<=0){
+      P.hp=Math.min(maxHP(),P.hp+1);
+      floats.push({x:P.x,y:GROUND-84,txt:"❤️ +1",col:"#ff6b8b",t:1.1,vy:-28,big:true});
+      puff(P.x,GROUND-44,"#ff6b8b",8);
+    }
+  }
+
+  if(P.pickP>0){
+    if(wantLeft()||wantRight()){ P.pickP=0;P.pickDoor=null; }
+    else{
+      P.pickP+=dt/Math.max(0.1,pickSecs());
+      if(P.pickP>=1){
+        const d=P.pickDoor; P.pickP=0;P.pickDoor=null;
+        if(d){ d.locked=false; led.pick++;
+          floats.push({x:P.x,y:GROUND-92,txt:"CLICK.",col:"#5ec27a",t:1.1,vy:-24});
+          enterDoor(d,TUNE.lockedLoot); }
+      }
+    }
+  }
+  const busy=P.hidden||P.entryT>0||P.pickP>0||P.potT>0;
+
+  if(!busy){
+    let mv=0;
+    if(wantLeft()){mv=-1;P.face=-1;}
+    if(wantRight()){mv=1;P.face=1;}
+    const mult=P.hexing>0?TUNE.hexMove:(P.casting>0?TUNE.castMove:1);
+    P.x+=mv*TUNE.speed*mult*dt;
+    if(P.x<20) P.x=20;
+    if(P.x>P.maxX) P.maxX=P.x;
+  }
+
+  /* ---- cast ---- */
+  const arm=ARMS[P.sel];
+  if(wantCast()&&!busy&&P.cd<=0){
+    if(arm.melee){
+      P.cd=arm.cd; P.casting=0.1; P.hexing=arm.cd*0.9; led.hex++;
+      /* The hex hits the NEAREST thing in reach — enemy OR bullet.
+         An incoming round is always closer than the man who fired it,
+         so hexing down-range becomes suppression. */
+      const R=hexReach();
+      let tgt=null,td=1e9,tBullet=null;
+      for(const e of enemies){
+        const dx=(e.x-P.x)*P.face;
+        if(dx>0&&dx<=R&&dx<td){td=dx;tgt=e;}
+      }
+      if(TUNE.hexPops){
+        for(const b of ebolts){
+          if(b.t<=0) continue;
+          const dx=(b.x-P.x)*P.face;
+          if(dx>0&&dx<=R&&dx<td){td=dx;tBullet=b;tgt=null;}
+        }
+      }
+      const hitSomething=tgt||tBullet;
+      const endX=P.x+P.face*(hitSomething?td:R);
+      const endY=tgt?GROUND-tgt.def.h*0.5:(tBullet?tBullet.y:GROUND-34);
+      zaps.push({x1:P.x+P.face*15,y1:GROUND-52,x2:endX,y2:endY,t:0.1});
+      shake=Math.min(1,shake+0.08);
+      if(tBullet){
+        tBullet.t=-1; led.pop++;
+        puff(endX,endY,"#9646dc",8);
+        floats.push({x:tBullet.x,y:endY-14,txt:"SWAT!",col:"#c08bff",t:0.6,vy:-30});
+      } else if(tgt){
+        puff(endX,endY,"#7a30bd",4);
+        /* ✦ HEX CHAIN — arc to the next body behind the first */
+        if(upg("hexchain")){
+          let nxt=null,nd=1e9;
+          for(const e of enemies){
+            if(e===tgt||e.hp<=0) continue;
+            const dx=(e.x-tgt.x)*P.face;
+            if(dx>0&&dx<140&&dx<nd){nd=dx;nxt=e;}
+          }
+          if(nxt){
+            zaps.push({x1:endX,y1:endY,x2:nxt.x,y2:GROUND-nxt.def.h*0.5,t:0.1});
+            hitEnemy(nxt,arm.dmg,P.face,true,"hex");
+          }
+        }
+        hitEnemy(tgt,arm.dmg,P.face,true,"hex");
+      }
+    } else if((P.runes[P.sel]||0)>0){
+      P.runes[P.sel]--; led.fired++;
+      led.runeCost += (P.sel==="ember"?TUNE.emberCost:TUNE.lanceCost);
+      P.cd=arm.cd; P.casting=0.14;
+      const maxHits = arm.pierce ? lancePierce() : emberHits();
+      /* 🔥 MIRROR EMBER — one cast, both directions. The pincer-breaker. */
+      const dirs = (P.sel==="ember"&&upg("mirror")) ? [P.face,-P.face] : [P.face];
+      for(const dr of dirs)
+        bolts.push({x:P.x+dr*18,y:GROUND-34,dir:dr,t:1.1,
+                    dmg:arm.dmg,pierce:arm.pierce,maxHits,col:arm.col,hits:[]});
+      shake=Math.min(1,shake+0.3);
+      puff(P.x+P.face*18,GROUND-50,arm.col,3);
+      if((P.runes[P.sel]||0)<=0){
+        floats.push({x:P.x,y:GROUND-78,txt:"out of "+arm.label.toLowerCase(),col:"#ff6b8b",t:1.2,vy:-20});
+        P.sel="hex";
+      }
+    }
+  }
+
+  /* ---- spawn ---- */
+  const gained=Math.max(0,P.maxX-lastX); lastX=P.maxX;
+  const diff=1+blockIdx*TUNE.ramp;
+  budget+=(gained/100)*TUNE.perDist*diff + TUNE.trickle*diff*dt;
+  burstT-=dt;
+  if(burstT<=0){ spawnBurst(); burstT=1.5+Math.random()*1.9; }   // you shouldn't cross a whole block alone
+
+  const nb=Math.floor(P.maxX/TUNE.blockLen);
+  if(nb>blockIdx){
+    const oldD=districtFor(blockIdx);
+    blockIdx=nb;
+    const newD=districtFor(blockIdx);
+    let nu=null;
+    for(const k in ENEMIES) if(ENEMIES[k].from===blockIdx) nu=ENEMIES[k];
+    if(isBossBlock(blockIdx)){ armBoss(blockIdx); banner("BLOCK "+(blockIdx+1)+" — THE END OF THE LINE"); }
+    else if(newD!==oldD) banner("⟩⟩ "+newD.name);           // the city changes
+    else if(nu)          banner("BLOCK "+(blockIdx+1)+" — "+nu.face+" "+nu.name.toUpperCase());
+    else if(isVendorBlock(blockIdx)) banner("BLOCK "+(blockIdx+1)+" — THE DOOR");
+    else                 banner("BLOCK "+(blockIdx+1));
+    /* ⭐ A UNIT THAT DEBUTS MUST ACTUALLY SHOW UP. The banner used to announce a
+       Bat Runner and the random spawner might not make one for half a block —
+       the teaching moment was being thrown away. (Talon, 2026-11-11.) */
+    /* a Mob that arrives ALONE teaches you the wrong thing about Mobs */
+    if(nu&&!isBossBlock(blockIdx))
+      for(let i=0;i<(nu.group||1);i++)
+        enemies.push(makeEnemy(nu, cam+VW+90+i*30, -1));
+  }
+
+  /* ---- THE CAGE ---- */
+  if(arena.pending && P.maxX>=arena.trigger) startBoss();
+  if(arena.active){
+    if(P.x<arena.lo) P.x=arena.lo;
+    if(P.x>arena.hi) P.x=arena.hi;
+    if(P.maxX>arena.hi) P.maxX=arena.hi;
+    const b=arena.boss;
+    if(!b||b.hp<=0){
+      arena.active=false; arena.boss=null;
+      banner("THE WAY IS OPEN");
+    } else if(b.def.trait==="summon"){
+      arena.summonT-=dt;
+      if(arena.summonT<=0){
+        arena.summonT=TUNE.summonEvery/(b.def.rate||1);
+        const pool=[ENEMIES.thug,ENEMIES.runner,ENEMIES.mob];
+        for(let i=0;i<2;i++){
+          const d=pool[(Math.random()*pool.length)|0];
+          const left=Math.random()<0.5;
+          enemies.push(makeEnemy(d, left?arena.lo-30-i*30:arena.hi+30+i*30, left?1:-1));
+        }
+        floats.push({x:b.x,y:GROUND-b.def.h-30,txt:"ON ME!",col:"#9fd0ff",t:1.1,vy:-28});
+      }
+    }
+  }
+
+  /* ---- player bolts ---- */
+  for(const b of bolts){
+    b.x+=b.dir*700*dt; b.t-=dt;
+    for(const e of enemies){
+      if(e.hp<=0||b.hits.includes(e)) continue;
+      if(Math.abs(e.x-b.x)<e.def.w*0.6+8){
+        b.hits.push(e); puff(b.x,b.y,"#fff",4);
+        hitEnemy(e,b.dmg,b.dir,false,"rune");
+        if(b.hits.length>=(b.maxHits||1)){ b.t=-1; break; }
+      }
+    }
+  }
+  bolts=bolts.filter(b=>b.t>0&&Math.abs(b.x-cam-VW/2)<VW);
+
+  /* ---- enemy bullets ---- */
+  for(const b of ebolts){
+    b.x+=b.dir*b.spd*dt; b.t-=dt;
+    if(!P.hidden&&Math.abs(b.x-P.x)<16&&b.t>0){
+      b.t=-1; P.hp-=b.dmg; P.hurtT=0.45; shake=1;
+      P.entryT=0;P.entryDoor=null;
+      if(P.pickP>0){ P.pickP=Math.max(0.0001,P.pickP-TUNE.pickSetback/100); P.pickFlash=0.4; }
+      floats.push({x:P.x,y:GROUND-66,txt:"-"+b.dmg,col:"#ff6b8b",t:0.8,vy:-34});
+      puff(P.x,GROUND-40,"#ff6b8b",5);
+      if(P.hp<=0) die();
+    }
+  }
+  ebolts=ebolts.filter(b=>b.t>0&&Math.abs(b.x-cam-VW/2)<VW*1.2);
+  for(const z of zaps) z.t-=dt;
+  zaps=zaps.filter(z=>z.t>0);
+
+  /* ---- enemies ---- */
+  for(const e of enemies){
+    if(e.hp<=0) continue;
+    e.flash=Math.max(0,e.flash-dt); e.hitCD=Math.max(0,e.hitCD-dt);
+    e.stun=Math.max(0,e.stun-dt); e.bob+=dt*6;
+    if(e.laneCD>0) e.laneCD-=dt;
+    if(e.grace>0){ e.grace-=dt; e.aim=0; e.hitCD=Math.max(e.hitCD,e.grace); }
+    const slow=e.stun>0?0.3:1;
+
+    if(P.hidden){
+      e.aim=0;                                    // can't shoot what they can't see
+      if(Math.abs(e.x-P.x)>150) e.idle=Math.min(1,(e.idle||0)+dt*0.7);
+      e.x+=e.facing*e.def.speed*slow*(1-0.75*(e.idle||0))*dt;
+      if(e.idle>=1) e.x+=Math.sin(e.bob*0.6)*12*dt;
+      continue;
+    }
+
+    /* turning — a man carrying a wall does not spin */
+    const want=(P.x>e.x)?1:-1;
+    if(want!==e.facing){
+      const tt=e.def.slowTurn?TUNE.shieldTurn:0.12;
+      e.turnT+=dt;
+      if(e.turnT>=tt){ e.facing=want; e.turnT=0; }
+    } else e.turnT=0;
+
+    const dist=Math.abs(e.x-P.x);
+    const R=e.def.ranged?RANGED[e.def.ranged]:null;
+
+    /* 🧱 ENRAGE — half dead is when he gets FAST, not weak */
+    let spd=e.def.speed;
+    if(e.def.trait==="enrage"&&e.hp<=e.hpMax*0.5){
+      spd*=1.7;
+      if(!e.raged){ e.raged=true; e.def_rage=true;
+        floats.push({x:e.x,y:GROUND-e.def.h-30,txt:"ENRAGED",col:"#ff6b8b",t:1.6,vy:-26});
+        shake=Math.min(1,shake+0.8); }
+    }
+
+    if(R){
+      if(dist>R.hold) e.x+=e.facing*spd*slow*dt;   // hold:0 = never stops walking
+      if(e.isBoss&&dist<e.def.w*0.5+16&&e.hitCD<=0){      // a boss still crushes you
+        e.hitCD=TUNE.bossSwing; P.hp-=(e.dmg||e.def.dmg); P.hurtT=0.45; shake=1;
+        floats.push({x:P.x,y:GROUND-66,txt:"-"+(e.dmg||e.def.dmg),col:"#ff6b8b",t:0.8,vy:-34});
+        if(P.hp<=0) die();
+      }
+      if(e.facing===want){
+        if(e.aim>0){
+          e.aim-=dt;
+          if(e.aim<=0){
+            for(let s=0;s<R.shots;s++)
+              ebolts.push({x:e.x+e.facing*16,y:GROUND-34-(s-1)*7,dir:e.facing,
+                           spd:R.spd*(1+(s-1)*0.06),dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3"});
+            e.reload=R.cool; shake=Math.min(1,shake+0.15);
+            puff(e.x+e.facing*18,GROUND-34,"#ffd9a0",4);
+          }
+        } else {
+          e.reload-=dt;
+          if(e.reload<=0&&dist<(R.fireAt||R.hold*1.25)) e.aim=R.wind;
+        }
+      }
+    } else {
+      e.x+=e.facing*spd*slow*dt;
+      if(dist<e.def.w*0.5+14&&e.hitCD<=0){
+        e.hitCD=0.85; P.hp-=(e.dmg||e.def.dmg); P.hurtT=0.45; shake=1;
+        P.entryT=0;P.entryDoor=null;
+        if(P.pickP>0){ P.pickP=Math.max(0.0001,P.pickP-TUNE.pickSetback/100); P.pickFlash=0.4; }
+        floats.push({x:P.x,y:GROUND-66,txt:"-"+(e.dmg||e.def.dmg),col:"#ff6b8b",t:0.8,vy:-34});
+        if(P.hp<=0) die();
+      }
+    }
+    if(!e.isBoss && e.x<P.maxX-2200) e.hp=-99;   // a boss never wanders off
+  }
+  enemies=enemies.filter(e=>e.hp>0);
+
+  /* ---- separation, two rules ----
+     ① DIFFERENT LANES WALK PAST EACH OTHER. The lanes stop being decoration and
+        become sidewalk lanes — a sprinter goes around the big guy.
+     ② SAME LANE separates, but WEIGHTED BY MASS. v0.14 pushed both bodies
+        equally, which meant a Bat Runner at 112px/s was bulldozing a Brass
+        Brute forward — lending it speed for free, so the brute got the fast
+        unit's advantage AND kept its own health. (Talon, 2026-11-10.)      */
+  const relax=Math.min(1,dt*9);
+  for(let i=0;i<enemies.length;i++){
+    for(let j=i+1;j<enemies.length;j++){
+      const a=enemies[i],b=enemies[j];
+      if(a.lane!==b.lane) continue;
+      const minGap=(a.def.w+b.def.w)*0.62;
+      const d=b.x-a.x, ad=Math.abs(d);
+      if(ad<minGap){
+        /* 🛣️ OVERTAKE: a faster unit stuck behind a slower one going the same
+           way steps into another lane instead of jamming. Only the rear-and-
+           faster one moves, with a cooldown so crowds don't flicker. */
+        if(a.facing===b.facing){
+          const rear = a.facing>0 ? (a.x<b.x?a:b) : (a.x>b.x?a:b);
+          const front = rear===a?b:a;
+          if(rear.def.speed > front.def.speed*1.12 && (rear.laneCD||0)<=0){
+            rear.lane=(rear.lane+1+((Math.random()*2)|0))%3;
+            rear.laneCD=1.5;
+          }
+        }
+        const s=(d===0?(i%2?1:-1):(d>0?1:-1));
+        const push=(minGap-ad)*relax;
+        const ma=a.def.mass||1, mb=b.def.mass||1, tot=ma+mb;
+        a.x-=s*push*(mb/tot);      // the heavy one barely moves
+        b.x+=s*push*(ma/tot);
+      }
+    }
+  }
+
+  for(const p of parts){p.t-=dt;p.vy+=600*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;}
+  parts=parts.filter(p=>p.t>0);
+  for(const f of floats){f.t-=dt;f.y+=f.vy*dt;}
+  floats=floats.filter(f=>f.t>0);
+
+  cam+=((P.x-VW*0.42)-cam)*Math.min(1,dt*6);
+  if(cam<0) cam=0;
+  if(bannerT>0){bannerT-=dt;if(bannerT<=0)document.getElementById("banner").style.opacity=0;}
+  hud();
+}
+
+function killed(e,src){
+  kills++;
+  const c=coinOf(e.def); P.coin+=c; led.earn+=c;
+  if(src==="rune") led.runeKillCoin+=c;   // the real Law-of-Return numerator
+  splat(e.x,GROUND-e.def.h*0.55);
+  floats.push({x:e.x,y:GROUND-e.def.h-6,txt:"😭",col:"#fff",t:0.95,vy:-54,big:true});
+  if(c>0) floats.push({x:e.x+16,y:GROUND-e.def.h-22,txt:"+"+c,col:"#ffd166",t:0.9,vy:-38});
+  if(Math.random()<runeDropPct()/100){
+    const w=Math.random()<0.78?"ember":"lance";
+    P.runes[w]=(P.runes[w]||0)+1;
+    floats.push({x:e.x-16,y:GROUND-e.def.h-38,txt:ARMS[w].icon+" +1",col:ARMS[w].col,t:1.3,vy:-30});
+  }
+}
+function die(){
+  if(dead) return;
+  /* ⏳ SECOND WIND — once per run, the thing that should have killed you doesn't */
+  if(P.wind){
+    P.wind=false; P.hp=Math.min(maxHP(),2); P.hurtT=1.4; shake=1;
+    for(const e of enemies) if(Math.abs(e.x-P.x)<320) e.stun=Math.max(e.stun,1.2);
+    if(!SIM){
+      puff(P.x,GROUND-44,"#c08bff",20);
+      floats.push({x:P.x,y:GROUND-96,txt:"NOT YET.",col:"#c08bff",t:1.8,vy:-26,big:true});
+    }
+    return;
+  }
+  dead=true;
+  if(SIM) return;
+  const m=Math.round(P.maxX/40);
+  if(m>best){best=m;localStorage.setItem("hexcap_best",m);}
+
+  /* 🔮 the harvest — depth dominates */
+  const blk=blockIdx+1;
+  const gained=sigilsFor(blk);
+  META.sigils+=gained;
+  const newDeep=blk>META.deepest;
+  if(newDeep) META.deepest=blk;
+  metaSave();
+  const nextGate=TIERS.find(t=>t.gate>META.deepest);
+  const rate=led.runeCost?(led.runeKillCoin/led.runeCost).toFixed(2)+"×":"—";
+  const leftover=(P.runes.ember||0)+(P.runes.lance||0);
+  /* 💀 THE HOARD CALLOUT — you cannot see the cost of NOT spending
+     unless something says it out loud. */
+  let jab="";
+  if(leftover>=8||P.coin>=120){
+    const line=HOARD_LINES[(Math.random()*HOARD_LINES.length)|0].replace("{R}",leftover);
+    jab=`<div style="margin-top:8px;color:#ffd166;font-style:italic;font-size:12px">
+           “${line}”<br><span style="color:#6f6b85;font-style:normal">— left behind:
+           🔥${P.runes.ember||0} · ⚡${P.runes.lance||0} · 🧪${P.pots} · 🪙${P.coin}</span></div>`;
+  }
+  document.getElementById("overRes").innerHTML=
+    `<b>${m}m</b> · block <b>${blockIdx+1}</b> · <b>${kills}</b> dropped<br>
+     earned 🪙<b>${led.earn}</b> · spent 🪙<b>${led.spend}</b> · <b>${led.fired}</b> runes · <b>${led.hex}</b> hexes<br>
+     <span style="color:#ffd166">rune return ${rate}</span> · <b>${led.stash}</b> stashes ·
+     <b>${led.pick}</b> locks · <b>${led.back}</b> back-hits · <b>${led.pop}</b> swatted · best <b>${best}m</b>
+     <div style="margin-top:9px;color:${gained?"#c08bff":"#6f6b85"};font-size:15px">🔮 +${gained} sigils
+       <span style="color:#8e89a8;font-size:12px">(${META.sigils} banked)</span></div>
+     <div style="color:#6f6b85;font-size:11px">
+       ${gained?`block ${nextSigilBlock(blk)} would pay ${sigilsFor(nextSigilBlock(blk))}`
+               :`nothing is carved below block ${SIGIL_FREE_BLOCKS+2} — sigils come from DEPTH, only`}</div>
+     ${newDeep?`<div style="color:#5ec27a;font-size:12px">⛏ new deepest — block ${blk}</div>`:""}
+     ${nextGate?`<div style="color:#6f6b85;font-size:11px">next shelf unlocks at block ${nextGate.gate} — ${nextGate.name}</div>`:""}
+     ${jab}`;
+  document.getElementById("over").style.display="flex";
+  hud();
+}
+
+/* ---------------- HUD ---------------- */
+function hud(){
+  if(SIM) return;
+  const g=(id,v)=>document.getElementById(id).textContent=v;
+  g("sBlock",blockIdx+1); g("sDist",Math.round(P.maxX/40)); g("sBest",best);
+  g("sCoin",P.coin); g("sVend",blocksToVendor(blockIdx));
+  g("sHP","❤️".repeat(Math.max(0,P.hp))+"🖤".repeat(Math.max(0,maxHP()-Math.max(0,P.hp)))
+          +(P.wind?" ⏳":""));
+  g("sSig",META.sigils); g("sDeep",META.deepest);
+  g("sTough","×"+toughHP(blockIdx).toFixed(1));
+  g("sDist2",districtFor(blockIdx).name);
+  g("rLance","dmg "+ARMS.lance.dmg+" · pierce "+lancePierce());
+  g("rEmber","dmg "+ARMS.ember.dmg+" · heavy");
+  g("nEmber",P.runes.ember||0); g("nLance",P.runes.lance||0); g("rHex",hexReach()+"px");
+  g("nPot",P.pots+"/"+potCap());
+  document.getElementById("potChip").classList.toggle("empty",P.pots<=0);
+  /* keep the thumb strip in sync: counts on the buttons, selection highlighted */
+  const pm={hex:"∞",ember:(P.runes.ember||0),lance:(P.runes.lance||0)};
+  ["hex","ember","lance"].forEach(w=>{
+    const b=document.getElementById("p"+w[0].toUpperCase()+w.slice(1));
+    if(!b) return;
+    b.textContent=ARMS[w].icon+(w==="hex"?"":" "+pm[w]);
+    b.classList.toggle("sel",P.sel===w);
+    b.style.opacity=(w!=="hex"&&(P.runes[w]||0)<=0)?.4:1;
+  });
+  const pp=document.getElementById("pPot");
+  if(pp){ pp.textContent="🧪 "+P.pots; pp.style.opacity=P.pots<=0?.4:1; }
+  const cc=document.getElementById("castCd");
+  if(cc){ const cd=ARMS[P.sel].cd;
+          cc.style.height=(cd>0?Math.max(0,Math.min(1,P.cd/cd))*100:0)+"%"; }
+  document.querySelectorAll(".arm[data-w]").forEach(el=>{
+    const w=el.dataset.w;
+    el.classList.toggle("sel",P.sel===w);
+    el.classList.toggle("empty",w!=="hex"&&(P.runes[w]||0)<=0);
+    const bar=el.querySelector(".cdbar i");
+    if(bar) bar.style.width=(P.sel===w&&ARMS[w].cd>0)
+      ? Math.max(0,100-(P.cd/ARMS[w].cd)*100)+"%":"100%";
+  });
+  g("lEarn",led.earn); g("lSpend",led.spend); g("lNet",led.earn-led.spend);
+  g("lFired",led.fired); g("lHex",led.hex); g("lStash",led.stash);
+  g("lPick",led.pick); g("lBack",led.back); g("lPop",led.pop);
+  g("lRate",led.runeCost?(led.runeKillCoin/led.runeCost).toFixed(2)+"×":"—");
+}
+
+/* ---------------- draw ---------------- */
+function draw(){
+  const sx=(Math.random()-0.5)*shake*7, sy=(Math.random()-0.5)*shake*5;
+  ctx.save(); ctx.translate(sx,sy);
+
+  /* 🐛 THESE LOOPS USED TO BE INDEXED FROM ZERO — past ~15,000px every building
+     was behind the player and no new ones were ever generated. Talon walked
+     through a literal void with doors floating in it. Now they follow the camera. */
+  const D=districtFor(blockIdx);
+  const g=ctx.createLinearGradient(0,0,0,GROUND);
+  g.addColorStop(0,D.sky[0]); g.addColorStop(1,D.sky[1]);
+  ctx.fillStyle=g; ctx.fillRect(-8,-8,VW+16,GROUND+8);
+
+  ctx.fillStyle=D.far;
+  const f0=Math.floor(cam*0.25/170)-2;
+  for(let i=f0;i<f0+Math.ceil(VW/170)+4;i++){
+    const px=i*170-cam*0.25;
+    const h=70+hash32(i*13+5)*120; ctx.fillRect(px,GROUND-h-60,130,h+60);
+  }
+
+  ctx.fillStyle=D.wall; ctx.fillRect(-8,40,VW+16,GROUND-40);
+  const w0=Math.floor(cam*0.6/120)-2;
+  for(let i=w0;i<w0+Math.ceil(VW/120)+4;i++){
+    const px=i*120-cam*0.6;
+    ctx.fillStyle=D.trim; ctx.fillRect(px,60,4,GROUND-60);
+    for(let r=0;r<3;r++){
+      ctx.fillStyle=hash32(i*31+r)>0.55?D.lit:D.dark;
+      ctx.fillRect(px+22,78+r*78,48,40);
+    }
+  }
+  /* embers / dust drifting through the worse districts */
+  if(D.motes){
+    const t=performance.now()/1000;
+    ctx.fillStyle=D.motes;
+    for(let i=0;i<26;i++){
+      const seed=hash32(i*77+3);
+      const mx=((seed*VW*2 + t*(14+seed*26) + cam*0.08) % (VW+80)) - 40;
+      const my=GROUND-20-((t*(18+seed*30)+seed*400)%(GROUND-40));
+      ctx.globalAlpha=0.10+0.22*seed;
+      ctx.fillRect(mx,my,2,2);
+    }
+    ctx.globalAlpha=1;
+  }
+  const b0=Math.max(0,Math.floor(cam/TUNE.blockLen)-1);
+  for(let k=b0;k<=b0+3;k++){
+    for(const d of doorsForBlock(k)){
+      if(d.vendor&&d.spent) continue;
+      const px=d.x-cam; if(px<-70||px>VW+70) continue;
+      const w=d.w,h=d.vendor?96:84;
+      if(d.vendor){
+        const gg=ctx.createRadialGradient(px,GROUND-h/2,4,px,GROUND-h/2,78);
+        gg.addColorStop(0,"rgba(255,209,102,.35)"); gg.addColorStop(1,"rgba(255,209,102,0)");
+        ctx.fillStyle=gg; ctx.fillRect(px-80,GROUND-h-60,160,h+70);
+      }
+      ctx.fillStyle=d.vendor?"#2a1f12":"#0c0e16";
+      ctx.beginPath(); ctx.moveTo(px-w/2,GROUND); ctx.lineTo(px-w/2,GROUND-h+16);
+      ctx.quadraticCurveTo(px,GROUND-h-12,px+w/2,GROUND-h+16);
+      ctx.lineTo(px+w/2,GROUND); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle=d.vendor?"#ffd166":(d.known?(d.locked?"#6b2f3d":"#3f7d55"):"#3a4160");
+      ctx.lineWidth=2; ctx.stroke(); ctx.textAlign="center";
+      if(d.vendor){ ctx.font="17px serif"; ctx.fillText("🕯️",px,GROUND-46); }
+    else if(arena.active){ ctx.fillStyle="#c08bff"; ctx.font="bold 8px Verdana";
+      ctx.fillText("COVER",px,GROUND-h-6); }
+      else if(d.known&&d.locked){ ctx.font="15px serif"; ctx.fillText("🔒",px,GROUND-34); }
+      else if(d.known){ ctx.fillStyle="#3f7d55"; ctx.fillRect(px-7,GROUND-6,14,3); }
+    }
+  }
+  ctx.fillStyle=D.ground; ctx.fillRect(-8,GROUND,VW+16,VH-GROUND+8);
+  ctx.strokeStyle=D.trim; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(-8,GROUND+0.5); ctx.lineTo(VW+8,GROUND+0.5); ctx.stroke();
+  ctx.fillStyle=D.dark;
+  const s0=Math.floor(cam/70)-1;
+  for(let i=s0;i<s0+Math.ceil(VW/70)+3;i++){ ctx.fillRect(i*70-cam,GROUND+16,64,3); }
+  ctx.font="bold 11px Verdana"; ctx.textAlign="center";
+  for(let k=b0;k<=b0+3;k++){
+    const px=k*TUNE.blockLen-cam; if(px<-40||px>VW+40) continue;
+    ctx.fillStyle="#2f3550"; ctx.fillRect(px-1,GROUND,2,VH-GROUND);
+    ctx.fillStyle="#4a5176"; ctx.fillText("BLOCK "+(k+1),px,GROUND+40);
+  }
+
+  /* 🔒 THE CAGE — two walls of the same stuff you throw */
+  if(arena.active){
+    const t=performance.now()/260;
+    for(const wx of [arena.lo,arena.hi]){
+      const px=wx-cam; if(px<-60||px>VW+60) continue;
+      const g2=ctx.createLinearGradient(px-14,0,px+14,0);
+      g2.addColorStop(0,"rgba(192,139,255,0)");
+      g2.addColorStop(0.5,"rgba(192,139,255,"+(0.30+0.12*Math.sin(t)) +")");
+      g2.addColorStop(1,"rgba(192,139,255,0)");
+      ctx.fillStyle=g2; ctx.fillRect(px-14,-8,28,GROUND+8);
+      ctx.strokeStyle="rgba(214,180,255,.75)"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,GROUND); ctx.stroke();
+      for(let i=0;i<7;i++){
+        const yy=((t*40+i*52)%(GROUND+40))-20;
+        ctx.fillStyle="rgba(230,210,255,.5)"; ctx.fillRect(px-3,yy,6,10);
+      }
+    }
+  }
+
+  const ppx=P.x-cam;
+  if(TUNE.showReach&&!P.hidden&&P.entryT<=0&&P.pickP<=0&&P.sel==="hex"){
+    const ex=P.x+P.face*hexReach()-cam;
+    ctx.strokeStyle="rgba(111,168,255,.25)"; ctx.lineWidth=2; ctx.setLineDash([4,5]);
+    ctx.beginPath(); ctx.moveTo(ex,GROUND-6); ctx.lineTo(ex,GROUND-58); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // draw back lanes first so a crowd layers instead of becoming one silhouette
+  const drawList=enemies.slice().sort((a,b)=>b.lane-a.lane);
+  for(const e of drawList){
+    const px=e.x-cam; if(px<-80||px>VW+80) continue;
+    // lanes are functional now, so they get a touch more separation — but
+    // feet still stay near the ground. 9px was hovering; 5px reads as depth.
+    const d=e.def, by=Math.sin(e.bob)*2 - e.lane*5;
+    // aim telegraph
+    if(e.aim>0){
+      ctx.globalAlpha=0.35+0.3*Math.sin(e.aim*40);
+      ctx.strokeStyle="#ff6b6b"; ctx.lineWidth=1.5; ctx.setLineDash([6,6]);
+      ctx.beginPath(); ctx.moveTo(px+e.facing*16,GROUND-34);
+      ctx.lineTo(px+e.facing*520,GROUND-34); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha=1;
+      ctx.fillStyle="#ff6b6b"; ctx.font="bold 15px Verdana"; ctx.textAlign="center";
+      ctx.fillText("!",px,GROUND-d.h-26+by);
+    }
+    ctx.fillStyle=e.flash>0?"#fff":d.col;
+    ctx.fillRect(px-d.w/2,GROUND-d.h+by,d.w,d.h);
+    if(e.lane>0){ ctx.fillStyle="rgba(8,9,15,"+(e.lane*0.13)+")";
+                  ctx.fillRect(px-d.w/2,GROUND-d.h+by,d.w,d.h); }
+    // ⭐ the real readability fix: an outline, so touching silhouettes stay COUNTABLE
+    ctx.strokeStyle="#0b0d14"; ctx.lineWidth=2;
+    ctx.strokeRect(px-d.w/2,GROUND-d.h+by,d.w,d.h);
+    ctx.fillStyle="rgba(0,0,0,.25)"; ctx.fillRect(px-d.w/2,GROUND-14+by,d.w,14);
+    ctx.font=(d.w*0.74|0)+"px serif"; ctx.textAlign="center";
+    ctx.fillText(e.flash>0?"😖":(e.stun>0?"😵":d.face),px,GROUND-d.h+by+d.h*0.42);
+    // the shield itself, on the facing side
+    /* ⭐ BARS APPEAR THE MOMENT A UNIT IS DAMAGED, and not before.
+       No clutter on a clean street; instant feedback the second you connect;
+       and the min-max read Talon wanted — "that one's almost dead, go hex it." */
+    const bar=(y,frac,col)=>{
+      const W=Math.max(22,d.w);
+      ctx.fillStyle="rgba(11,13,20,.85)"; ctx.fillRect(px-W/2-1,y-1,W+2,5);
+      ctx.fillStyle="#3a3f55"; ctx.fillRect(px-W/2,y,W,3);
+      ctx.fillStyle=col; ctx.fillRect(px-W/2,y,W*Math.max(0,Math.min(1,frac)),3);
+    };
+    if(d.shield&&e.shieldHp>0){
+      ctx.fillStyle="#cfd6df";
+      ctx.fillRect(px+e.facing*(d.w/2+2)-(e.facing>0?0:7),GROUND-d.h+6+by,7,d.h-10);
+      if(e.shieldHp<(e.shieldMax||1)) bar(GROUND-d.h-16+by,e.shieldHp/(e.shieldMax||1),"#9fd0ff");
+    }
+    const hpMax=e.hpMax||d.hp;
+    if(e.hp<hpMax) bar(GROUND-d.h-9+by,e.hp/hpMax,"#ff6b8b");
+    ctx.font="bold 9px Verdana"; ctx.fillStyle="#ffd166";
+    ctx.fillText("🪙"+coinOf(d),px,GROUND-d.h-(d.shield?26:17)+by);
+    if(d.stagger===0){ ctx.fillStyle="#8d8f9e"; ctx.font="bold 8px Verdana";
+      ctx.fillText("UNFLINCHING",px,GROUND-d.h-28+by); }
+    // 🗡️ the flank window, made visible — informed choice, not a secret
+    if(d.shield&&e.shieldHp>0&&e.facing!==((P.x>e.x)?1:-1)){
+      ctx.fillStyle="#5ec27a"; ctx.font="bold 9px Verdana";
+      ctx.fillText("▸ BACK EXPOSED",px,GROUND-d.h-38+by);
+    }
+    if(P.hidden&&Math.abs(e.x-P.x)>150){
+      ctx.font="12px serif"; ctx.fillStyle="#fff"; ctx.fillText("❓",px,GROUND-d.h-50+by); }
+    ctx.globalAlpha=1;
+  }
+
+  for(const b of bolts){
+    const px=b.x-cam,R=b.pierce?20:16;
+    const gg=ctx.createRadialGradient(px,b.y,0,px,b.y,R);
+    gg.addColorStop(0,"#fff"); gg.addColorStop(0.4,b.col); gg.addColorStop(1,"rgba(0,0,0,0)");
+    /* ⚡ LANCE = LIGHTNING. It used to be a flat beam while the HEX wore the
+       jagged-bolt look — the two were wearing each other's costumes. */
+    if(b.pierce){
+      ctx.lineCap="round";
+      for(const pass of [[7,0.22,b.col],[2.4,0.95,"#f2faff"]]){
+        ctx.globalAlpha=pass[1]; ctx.lineWidth=pass[0]; ctx.strokeStyle=pass[2];
+        ctx.beginPath(); ctx.moveTo(px,b.y);
+        for(let i=1;i<=7;i++) ctx.lineTo(px-b.dir*(i*17),b.y+(Math.random()-0.5)*15);
+        ctx.stroke();
+      }
+      ctx.globalAlpha=0.6; ctx.lineWidth=1.4; ctx.strokeStyle="#cfefff";
+      for(let f=0;f<2;f++){
+        const o=30+f*46;
+        ctx.beginPath(); ctx.moveTo(px-b.dir*o,b.y);
+        ctx.lineTo(px-b.dir*(o+16),b.y+(f?18:-18)); ctx.stroke();
+      }
+      ctx.lineCap="butt"; ctx.globalAlpha=1;
+    }
+    ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(px,b.y,R,0,7); ctx.fill();
+  }
+  for(const b of ebolts){
+    const px=b.x-cam;
+    ctx.fillStyle="rgba(255,120,120,.35)"; ctx.fillRect(px-b.dir*18,b.y-2,18,4);
+    ctx.fillStyle="#ffdede"; ctx.beginPath(); ctx.arc(px,b.y,3.5,0,7); ctx.fill();
+  }
+  /* ✦ HEX = A CURSE. Near-black core, violet corona, smooth and baleful —
+     not a blue spark. A hex is a malediction; it should look like one. */
+  for(const z of zaps){
+    const a=Math.min(1,z.t*12);
+    const x1=z.x1-cam,y1=z.y1,x2=z.x2-cam,y2=z.y2;
+    const mx=(x1+x2)/2,my=(y1+y2)/2-9;
+    const curve=()=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.quadraticCurveTo(mx,my,x2,y2);ctx.stroke();};
+    ctx.lineCap="round";
+    /* wispy, not a solid rod — a curse should look like smoke with a bad idea
+       inside it. Broken dash + thin core + a lot of drift. */
+    ctx.globalAlpha=a*0.26; ctx.strokeStyle="#9646dc"; ctx.lineWidth=15; curve();
+    ctx.setLineDash([13,6]); ctx.lineDashOffset=-Math.random()*18;
+    ctx.globalAlpha=a*0.62; ctx.strokeStyle="#8b3fd6"; ctx.lineWidth=6;  curve();
+    ctx.globalAlpha=a*0.75; ctx.strokeStyle="#2a0f45"; ctx.lineWidth=1.8; curve();
+    ctx.setLineDash([]);
+    for(let i=0;i<9;i++){                       // wisps peeling off the curse
+      const t2=0.12+i*0.095, ix=x1+(x2-x1)*t2, iy=y1+(y2-y1)*t2-4;
+      ctx.fillStyle="rgba("+(120+((Math.random()*60)|0))+",50,190,"+(a*(0.18+Math.random()*0.3))+")";
+      ctx.beginPath();
+      ctx.arc(ix+(Math.random()-0.5)*16, iy-Math.random()*20, 1.2+Math.random()*3.2, 0, 7);
+      ctx.fill();
+    }
+    ctx.lineCap="butt"; ctx.globalAlpha=1;
+  }
+
+  ctx.globalAlpha=P.hidden?0.55:1;
+  if(P.hurtT>0&&Math.floor(P.hurtT*22)%2===0) ctx.globalAlpha*=0.35;
+  ctx.fillStyle="#3b3570";
+  ctx.beginPath(); ctx.moveTo(ppx-13,GROUND); ctx.lineTo(ppx-8,GROUND-36);
+  ctx.lineTo(ppx+8,GROUND-36); ctx.lineTo(ppx+13,GROUND); ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#efe3c8"; ctx.beginPath(); ctx.arc(ppx,GROUND-42,7.5,0,7); ctx.fill();
+  ctx.fillStyle="#1b1733";
+  ctx.fillRect(ppx+P.face*1.5-2,GROUND-44,2,3); ctx.fillRect(ppx+P.face*1.5+2,GROUND-44,2,3);
+  ctx.fillStyle="#8b85ff";
+  ctx.beginPath(); ctx.moveTo(ppx-12,GROUND-47); ctx.lineTo(ppx+P.face*6,GROUND-76);
+  ctx.lineTo(ppx+12,GROUND-47); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle="#6b5a3a"; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(ppx+P.face*11,GROUND-4); ctx.lineTo(ppx+P.face*15,GROUND-52); ctx.stroke();
+  const tc=ARMS[P.sel].col,RR=P.casting>0?17:9;
+  const tg=ctx.createRadialGradient(ppx+P.face*15,GROUND-54,0,ppx+P.face*15,GROUND-54,RR);
+  tg.addColorStop(0,"#fff"); tg.addColorStop(0.5,tc); tg.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle=tg; ctx.beginPath(); ctx.arc(ppx+P.face*15,GROUND-54,RR,0,7); ctx.fill();
+  ctx.fillStyle=tc; ctx.font="bold 13px Verdana"; ctx.textAlign="center";
+  ctx.fillText(P.face>0?"▶":"◀",ppx+P.face*26,GROUND-30);
+  ctx.globalAlpha=1;
+
+  for(const p of parts){
+    ctx.globalAlpha=Math.max(0,Math.min(1,p.t*2)); ctx.fillStyle=p.col;
+    ctx.beginPath(); ctx.arc(p.x-cam,p.y,p.r,0,7); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  for(const f of floats){
+    ctx.globalAlpha=Math.max(0,Math.min(1,f.t*1.6));
+    ctx.font=f.big?"20px serif":"bold 13px Verdana"; ctx.textAlign="center";
+    ctx.fillStyle=f.col; ctx.fillText(f.txt,f.x-cam,f.y);
+  }
+  ctx.globalAlpha=1;
+
+  function ring(x,pr,col,label){
+    ctx.strokeStyle="#2b3148"; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.arc(x,GROUND-100,18,0,7); ctx.stroke();
+    ctx.strokeStyle=col;
+    ctx.beginPath(); ctx.arc(x,GROUND-100,18,-Math.PI/2,-Math.PI/2+pr*Math.PI*2); ctx.stroke();
+    ctx.fillStyle=col; ctx.font="bold 11px Verdana"; ctx.textAlign="center";
+    ctx.fillText(label,x,GROUND-124);
+  }
+  /* ⚠️ FIRING WARNINGS ONLY.
+     The old off-screen 🔫 radar ping let you lob a rune at something you
+     couldn't see — which deleted the ambush entirely. Reaction time is fair;
+     free pre-emption is not. A gun only announces itself when it AIMS.
+     (Talon, 2026-11-10.) */
+  for(const e of enemies){
+    if(!e.def.ranged||e.hp<=0||P.hidden||e.aim<=0) continue;
+    const px=e.x-cam;
+    const ex=Math.max(14,Math.min(VW-14,px));
+    const off=px<10||px>VW-10;
+    const R=RANGED[e.def.ranged];
+    ctx.globalAlpha=0.55+0.45*Math.sin(e.aim*30);
+    ctx.fillStyle="#ff6b6b";
+    if(off){                                  // a sniper you cannot see, but CAN read
+      const side=px<10?-1:1;
+      ctx.beginPath();
+      ctx.moveTo(ex+side*9,GROUND-150); ctx.lineTo(ex-side*5,GROUND-158);
+      ctx.lineTo(ex-side*5,GROUND-142); ctx.closePath(); ctx.fill();
+    }
+    ctx.font="bold 13px Verdana"; ctx.textAlign="center";
+    ctx.fillText(R&&R.glint?"✨":"⚠",ex,GROUND-166);
+    ctx.globalAlpha=1;
+    if(R&&R.glint){                           // 🎯 the scope glint
+      const gg=ctx.createRadialGradient(ex,GROUND-120,0,ex,GROUND-120,22);
+      gg.addColorStop(0,"rgba(255,255,255,"+(0.35+0.4*Math.sin(e.aim*24))+")");
+      gg.addColorStop(1,"rgba(255,220,220,0)");
+      ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(ex,GROUND-120,22,0,7); ctx.fill();
+    }
+  }
+
+  if(P.potT>0) ring(ppx,1-P.potT/Math.max(0.01,potSecs()),"#ff6b8b","drinking…");
+  if(P.entryT>0) ring(ppx,1-P.entryT/TUNE.entry,"#ffd166","trying the door…");
+  if(P.pickP>0){
+    ring(ppx,P.pickP,P.pickFlash>0?"#ff6b8b":"#5ec27a","picking the lock…");
+    void 0;
+    ctx.fillStyle="#6f6b85"; ctx.font="10px Verdana"; ctx.textAlign="center";
+    ctx.fillText("move to bail",ppx,GROUND-74);
+  }
+  /* 💀 BOSS BAR — top of screen, with the name and the rank */
+  if(arena.active&&arena.boss&&arena.boss.hp>0){
+    const b=arena.boss, frac=b.hp/(b.hpMax||1);
+    const W=Math.min(VW-60,560), X=(VW-W)/2, Y=14;
+    ctx.fillStyle="rgba(11,13,20,.82)"; ctx.fillRect(X-8,Y-12,W+16,30);
+    ctx.fillStyle="#3a3f55"; ctx.fillRect(X,Y,W,9);
+    ctx.fillStyle=frac>0.5?"#ff6b8b":"#ff3d63"; ctx.fillRect(X,Y,W*Math.max(0,frac),9);
+    if(b.shieldHp>0){
+      ctx.fillStyle="#9fd0ff";
+      ctx.fillRect(X,Y-5,W*Math.max(0,b.shieldHp/(b.shieldMax||1)),4);
+    }
+    ctx.fillStyle="#fff"; ctx.font="bold 12px Verdana"; ctx.textAlign="center";
+    ctx.fillText(b.def.face+"  "+b.def.name,VW/2,Y+21);
+  }
+  /* 🎬 THE ENTRANCE CARD — the only narrator this game has, being himself */
+  if(arena.cine>0&&arena.boss){
+    ctx.save(); ctx.translate(-sx,-sy);        // the card does NOT shake
+    const d=arena.boss.def, T=TUNE.bossCard, t=arena.cine;
+    const inA=Math.min(1,(T-t)*5), outA=Math.min(1,t*3.2), a=Math.min(inA,outA);
+    ctx.globalAlpha=a*0.9; ctx.fillStyle="#06070c"; ctx.fillRect(-8,-8,VW+16,VH+16);
+    ctx.globalAlpha=a;
+    const cy=VH*0.40, slide=(1-inA)*40;
+    ctx.fillStyle="#1a1020"; ctx.fillRect(0,cy-62+slide,VW,124);
+    ctx.fillStyle=d.col;     ctx.fillRect(0,cy-62+slide,VW,3);
+    ctx.fillStyle=d.col;     ctx.fillRect(0,cy+59+slide,VW,3);
+    ctx.textAlign="center";
+    ctx.font="44px serif";  ctx.fillText(d.face,VW/2-Math.min(190,VW*0.3),cy+14+slide);
+    ctx.fillStyle="#fff"; ctx.font="bold 26px Verdana"; ctx.letterSpacing="3px";
+    ctx.fillText(d.name,VW/2+36,cy-8+slide);
+    ctx.letterSpacing="0px";
+    ctx.fillStyle="#c9c2e0"; ctx.font="italic 13px Verdana";
+    ctx.fillText('"'+(d.card||d.tell)+'"',VW/2+36,cy+22+slide);
+    ctx.fillStyle="#6f6b85"; ctx.font="10px Verdana"; ctx.letterSpacing="2px";
+    ctx.fillText("THE STREET IS SEALED",VW/2,cy+48+slide);
+    ctx.letterSpacing="0px"; ctx.globalAlpha=1;
+    ctx.restore();
+  }
+  if(P.hidden){
+    const vg=ctx.createRadialGradient(ppx,GROUND-50,40,ppx,GROUND-50,VW*0.62);
+    vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(4,5,10,0.82)");
+    ctx.fillStyle=vg; ctx.fillRect(-8,-8,VW+16,VH+16);
+    ctx.fillStyle="#6fa8ff"; ctx.font="bold 12px Verdana"; ctx.textAlign="center";
+    ctx.fillText("HIDDEN — they can't see you, and they can't shoot you",VW/2,30);
+  }
+  if(!P.hidden&&P.entryT<=0&&P.pickP<=0){
+    const d=nearbyDoor(P.x);
+    if(d){
+      let txt,col;
+      /* 🚪 Dowsing now reveals the LOCK as well as the stash — the question
+         Nimble can't answer, and the reason it's worth 40. */
+      const dow=upg("dowsing"), dows=dow&&hasStash(d);
+      const seenLocked=(d.known||dow)&&d.locked;
+      if(d.vendor){txt="▼ THE DOOR — he's in there";col="#ffd166";}
+      else if(seenLocked){txt="🔒 locked — ▼ to pick it ("+pickSecs().toFixed(1)+"s)"
+             +(dows?"  ✨ worth it":"");col=dows?"#ffd166":"#ff9f68";}
+      else if(d.looted){txt="▼ already searched";col="#6f6b85";}
+      else {txt=dow?(dows?"▼ ✨ something's in there":"▼ empty — skip it")
+                   :"▼ a doorway — try it?";
+            col=dows?"#ffd166":(dow?"#6f6b85":"#cfcbe4");}
+      ctx.fillStyle=col; ctx.font="bold 12px Verdana"; ctx.textAlign="center";
+      ctx.fillText(txt,ppx,GROUND-104);
+    }
+  }
+  ctx.restore();
+}
+
+/* ---------------- tuning ---------------- */
+[["t_shieldHp","shieldHp"],["t_shieldTurn","shieldTurn"],["t_copRange","copRange"],
+ ["t_windup","windup"],["t_reload","reload"],["t_bullet","bullet"],
+ ["t_hexRange","hexRange"],["t_hexDmg","hexDmg"],["t_hexCD","hexCD"],["t_hexStun","hexStun"],
+ ["t_hexMove","hexMove"],["t_pickTime","pickTime"],["t_pickSetback","pickSetback"],
+ ["t_lockedLoot","lockedLoot"],["t_lockedPct","lockedPct"],["t_stash","stash"],
+ ["t_entry","entry"],["t_doorGap","doorGap"],["t_emberCost","emberCost"],["t_emberDmg","emberDmg"],
+ ["t_lanceCost","lanceCost"],["t_lanceDmg","lanceDmg"],["t_coinMult","coinMult"],
+ ["t_runeDrop","runeDrop"],["t_startCoin","startCoin"],["t_perDist","perDist"],
+ ["t_trickle","trickle"],["t_behindPct","behindPct"],["t_baseCap","baseCap"],["t_ramp","ramp"],
+ ["t_vendEvery","vendEvery"],["t_blockLen","blockLen"],["t_speed","speed"],
+ ["t_castMove","castMove"],["t_hp","hp"],
+ ["t_potCost","potCost"],["t_potMax","potMax"],["t_potTime","potTime"],
+ ["t_mendCost","mendCost"],["t_hpRamp","hpRamp"],["t_dmgRamp","dmgRamp"],["t_capMax","capMax"],
+ ["t_sniperRange","sniperRange"],["t_lancePierce","lancePierce"],["t_grace","grace"],
+ ["t_bossHpMult","bossHpMult"],["t_bossEvery","bossEvery"],
+ ["t_bossSwing","bossSwing"],["t_kiteNear","kiteNear"],["t_arenaWide","arenaWide"]
+].forEach(([id,key])=>{
+  const el=document.getElementById(id); if(!el) return;
+  const out=el.parentElement.querySelector("output");
+  el.value=TUNE[key]; if(out) out.value=TUNE[key];
+  el.addEventListener("input",()=>{
+    TUNE[key]=parseFloat(el.value); if(out) out.value=el.value;
+    if(key==="hp") P.hp=Math.min(P.hp,maxHP());
+    hud();
+  });
+});
+document.getElementById("t_showReach").addEventListener("change",e=>{
+  TUNE.showReach=e.target.checked?1:0;
+});
+document.getElementById("t_hexPops").addEventListener("change",e=>{
+  TUNE.hexPops=e.target.checked?1:0;
+});
+
+/* ==========================================================
+   🤖 THE BOT LAB
+   Five policies that differ from BALANCED on exactly ONE axis,
+   so any difference in the results has exactly one cause.
+   They drive the real input functions and the real step().
+   ========================================================== */
+/* Each policy differs from BALANCED on exactly one COMBAT axis — and carries its
+   own sigil BUY ORDER, so a campaign also tests build paths at the meta layer. */
+const POLICIES=[
+  {name:"Balanced", runeMin:8,  doors:1, note:"runes on anything worth 8+, takes doors on the way",
+   order:["hardy","salvage","scavenger","pockets","longhex","twin","deeplance","nimble",
+          "mirror","dowsing","steady","secondwind","hexchain"]},
+  {name:"Hoarder",  runeMin:16, doors:1, note:"saves runes for brutes · buys survival",
+   order:["hardy","pockets","secondwind","steady","scavenger","longhex","nimble","dowsing",
+          "salvage","twin","deeplance","mirror","hexchain"]},
+  {name:"Spender",  runeMin:3,  doors:1, note:"runes on almost anything · buys ammo & income",
+   order:["scavenger","salvage","twin","deeplance","mirror","hardy","longhex","pockets",
+          "steady","nimble","dowsing","hexchain","secondwind"]},
+  {name:"Rusher",   runeMin:8,  doors:0, note:"never stops for a door · buys reach",
+   order:["longhex","hardy","salvage","hexchain","mirror","twin","scavenger","pockets",
+          "deeplance","secondwind","steady","nimble","dowsing"]},
+  {name:"Looter",   runeMin:8,  doors:2, note:"every door AND every lock · buys door tech",
+   order:["nimble","dowsing","pockets","hardy","scavenger","salvage","steady",
+          "longhex","twin","deeplance","mirror","secondwind","hexchain"]}
+];
+
+/* Sinks go LAST for every bot, so the capstones actually get bought and we can
+   see what they do. (For a human the sink-vs-capstone choice is the whole point;
+   a greedy bot can't model that tension, so don't pretend it does.) */
+for(const p of POLICIES) p.order=p.order.concat(["kindling","conduction","deephex","deepcoffer"]);
+
+/* the bot's between-run shopping trip: greedy down its own priority list,
+   respecting the same depth gates the player faces */
+function spendSigils(pol){
+  let bought=true;
+  while(bought){
+    bought=false;
+    for(const id of pol.order){
+      const s=SIGILS.find(x=>x.id===id); if(!s) continue;
+      const lv=SIMM.up[id]|0; if(sigMaxed(s,lv)) continue;
+      if(SIMM.deepest<TIERS[s.tier].gate) continue;      // gate not reached
+      const price=sigPrice(s,lv);
+      if(SIMM.sigils<price) continue;
+      SIMM.sigils-=price; SIMM.up[id]=lv+1; bought=true;
+    }
+  }
+}
+
+function makeBot(pol){
+  return {
+    pol, in:{left:false,right:false,cast:false}, flee:0, hid:0,
+
+    /* every policy buys identically — the experiment is how they SPEND in combat */
+    buy(){
+      const take=(cost,fn)=>{ if(P.coin<cost) return false; P.coin-=cost; led.spend+=cost; fn(); return true; };
+      while(P.hp<maxHP()   && take(TUNE.mendCost ,()=>P.hp++)) {}
+      while(P.pots<potCap() && take(TUNE.potCost,()=>P.pots++)) {}
+      while((P.runes.lance||0)<2 && take(TUNE.lanceCost,()=>P.runes.lance=(P.runes.lance||0)+1)) {}
+      while(take(TUNE.emberCost,()=>P.runes.ember=(P.runes.ember||0)+1)) {}
+    },
+
+    think(){
+      const I=this.in; I.left=I.right=I.cast=false;
+      if(dead) return;
+
+      if(P.hidden){
+        this.hid=(this.hid||0)+1;
+        if(P.hp<maxHP()&&P.pots>0){ usePoultice(); return; }
+        let near=1e9; for(const e of enemies) near=Math.min(near,Math.abs(e.x-P.x));
+        // step back out when it's clear — or after ~4s regardless, so a bot
+        // can never camp a doorway forever and fake a good result
+        if(near>120||this.hid>120) doorAction();
+        return;
+      }
+      this.hid=0;
+      if(P.entryT>0||P.pickP>0||P.potT>0) return;      // committed — let it resolve
+
+      /* --- read the street --- */
+      let eR=null,eL=null,nR=0,nL=0;
+      for(const e of enemies){
+        const dx=e.x-P.x, ad=Math.abs(dx);
+        if(ad>700) continue;
+        if(dx>=0){ if(ad<400) nR++; if(!eR||ad<eR.d) eR={e,d:ad}; }
+        else     { if(ad<400) nL++; if(!eL||ad<eL.d) eL={e,d:ad}; }
+      }
+      let bR=1e9,bL=1e9;
+      for(const b of ebolts){
+        if(b.t<=0) continue;
+        const dx=b.x-P.x;
+        if(dx>=0&&b.dir<0) bR=Math.min(bR,dx);
+        if(dx<0 &&b.dir>0) bL=Math.min(bL,-dx);
+      }
+      const dR=Math.min(eR?eR.d:1e9,bR), dL=Math.min(eL?eL.d:1e9,bL);
+
+      /* --- face the nearer problem, otherwise face the way you're going.
+             NOTE: the turn is executed down in the feet block, as ONE key. --- */
+      const face = (dL<dR && dL<560) ? -1 : 1;
+
+      const tgt = face>0?eR:eL, bull = face>0?bR:bL;
+      const swat = bull<=hexReach()*1.25;
+
+      /* --- weapon choice --- */
+      let want="hex";
+      if(!swat&&tgt){
+        const worth=coinOf(tgt.e.def);
+        const crowd=face>0?nR:nL;
+        if(crowd>=3&&(P.runes.lance||0)>0) want="lance";
+        else if((P.runes.ember||0)>0 && worth>=this.pol.runeMin
+                && (tgt.d>hexReach()*0.8 || tgt.e.def.stagger===0)) want="ember";
+      }
+      if(want!==P.sel) select(want);
+      if(P.sel!==want&&want!=="hex") select("hex");
+
+      /* --- fire (only when actually pointing at it) --- */
+      const reach = P.sel==="hex"?hexReach():640;
+      if(P.face===face && (swat || (tgt&&tgt.d<=reach))) I.cast=true;
+
+      /* --- feet ---
+         🐛 THE BUG THAT SKEWED EVERY LAB RESULT:
+         this used to set I.left to turn around AND I.right to push on in the
+         same frame. The game's movement code runs wantLeft() then wantRight(),
+         so RIGHT ALWAYS WON — and because "push on" fires whenever a rune is
+         selected, a bot holding embers could never face left under any
+         circumstance. Hence "back-hits: 0" for three weeks (not a design
+         finding — a bot that physically could not flank), and bots walking
+         into the boss wall with their backs turned. (Talon spotted it by
+         WATCHING them, 2026-11-11.)
+         Rule now: decide ONE direction per frame. Never ask to move away from
+         the thing you are trying to face. */
+      const danger=Math.min(dR,dL);
+      const engaged = (tgt && tgt.d<520) || swat;
+      const gap = tgt?tgt.d:9999;
+      let stepDir=0;
+      /* 🏃 KITING. Before this the bot had exactly two behaviours — advance and
+         stand — so a boss walking into its face became a pure HP race a
+         6-heart wizard always loses. It cannot shoot while fleeing (facing
+         follows movement, same rule the player lives by), so this is a real
+         rhythm: fight → too close → short sprint → turn → fight.
+         The commit timer is the point: without hysteresis it flip-flops every
+         frame and goes nowhere. (Talon spotted this by watching, 2026-11-11.) */
+      /* retreat toward DAYLIGHT, not merely away from the threat. The boss
+         spawns behind you and the wall is ahead, so "-face" ran the bot
+         straight into the barrier and pinned it there. If the away-side is
+         cramped, shoulder THROUGH the boss to the open side — the player has
+         no collision with enemies, and a hit in transit beats being cornered. */
+      const roomR = arena.active ? arena.hi-P.x : 9999;
+      const roomL = arena.active ? P.x-arena.lo : 9999;
+      const away  = -face;
+      const awayRoom = away>0?roomR:roomL;
+      const hurt = P.hp<=maxHP()*0.55;
+      if(this.flee>0){ this.flee--; stepDir=this.fleeDir; }
+      else if(engaged && gap<TUNE.kiteNear && (P.sel!=="hex"||hurt)){
+        this.fleeDir = awayRoom>220 ? away : -away;
+        this.flee=16; stepDir=this.fleeDir;               // ~0.5s of running
+      }
+      else if(P.face!==face)         stepDir=face;        // turning IS a key press
+      else if(!engaged)              stepDir=1;           // street's clear — push on
+      else if(P.sel==="hex"&&gap>reach*0.9) stepDir=face; // close to hex range
+      else                           stepDir=0;           // plant and shoot
+      if(stepDir<0) I.left=true; else if(stepDir>0) I.right=true;
+
+      /* --- doors --- */
+      const d=nearbyDoor(P.x);
+      if(d){
+        if(d.vendor){ doorAction(); return; }
+        const quiet=danger>260;
+        /* 🚪 EMERGENCY DUCK — every policy, even Rusher who never stops for
+           loot. A dying wizard standing next to an open door is a bot bug. */
+        if(P.hp<=2&&!d.locked){ doorAction(); return; }
+        if(this.pol.doors>=1&&!d.looted&&!(d.known&&d.locked)&&quiet){ doorAction(); return; }
+        if(this.pol.doors>=2&&d.known&&d.locked&&quiet){ doorAction(); return; }
+      }
+      /* required danger>300, which NEVER happens in a sealed arena — so no bot
+         had ever drunk a poultice during a boss fight. */
+      if(P.hp<maxHP()&&P.pots>0&&(danger>200||P.hp<=2&&danger>120)) usePoultice();
+    }
+  };
+}
+
+function runOne(pol,maxT){
+  SIM=true; BOT=makeBot(pol); reset();
+  const dt=1/30; let t=0;
+  while(!dead&&t<maxT){ BOT.think(); step(dt); t+=dt; }
+  const r={block:blockIdx+1,dist:Math.round(P.maxX/40),kills,
+           fired:led.fired,hex:led.hex,
+           ret:led.runeCost?led.runeKillCoin/led.runeCost:0,
+           left:(P.runes.ember||0)+(P.runes.lance||0),coin:P.coin,
+           alive:!dead,t};
+  SIM=false; BOT=null; return r;
+}
+
+const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s.length?s[(s.length/2)|0]:0;};
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+
+/* ---- CAMPAIGN: a career, not a snapshot. Zero sigils → run → earn → spend →
+        run again. The only test that can answer "does the meta layer help?"
+        Resumable one run at a time so a 200-run career can't freeze the tab. ---- */
+function campStart(pol){
+  SIMM={sigils:0,deepest:1,up:{}};
+  return {pol,hist:[],earned:0,done:false};
+}
+function campStep(c,maxT){
+  const res=runOne(c.pol,maxT);
+  const blk=res.block, got=sigilsFor(blk);
+  c.earned+=got; SIMM.sigils+=got;
+  if(blk>SIMM.deepest) SIMM.deepest=blk;
+  spendSigils(c.pol);
+  c.hist.push(blk);
+}
+function campFinish(c){
+  c.carved=SIGILS.filter(s=>(SIMM.up[s.id]|0)>0)
+                 .map(s=>s.icon+((s.max>1||s.max===0)?(SIMM.up[s.id]|0):"")).join(" ");
+  c.deepest=SIMM.deepest; c.banked=SIMM.sigils; c.done=true;
+  SIMM=null; return c;
+}
+
+/* 📈 the career curve, drawn in text — a plateau is instantly visible */
+const SPARK="▁▂▃▄▅▆▇█";
+function sparkline(h,cols){
+  if(!h.length) return "";
+  cols=Math.min(cols||40,h.length);
+  const per=h.length/cols, lo=Math.min(...h), hi=Math.max(...h);
+  let out="";
+  for(let i=0;i<cols;i++){
+    const slice=h.slice(Math.floor(i*per),Math.max(Math.floor((i+1)*per),Math.floor(i*per)+1));
+    const v=slice.reduce((a,b)=>a+b,0)/slice.length;
+    const t=hi===lo?0.5:(v-lo)/(hi-lo);
+    out+=SPARK[Math.max(0,Math.min(7,Math.round(t*7)))];
+  }
+  return out;
+}
+
+function renderCampaign(res){
+  const rows=POLICIES.map(p=>{
+    const c=res.get(p.name); if(!c) return {p,none:true};
+    const h=c.hist, n=h.length, k=Math.max(1,Math.min(5,Math.floor(n/3)));
+    const early=med(h.slice(0,k)), late=med(h.slice(-k));
+    /* PLATEAU: the first run index after which the best-so-far never improves again */
+    let plat=n, bestSoFar=0, lastGain=0;
+    for(let i=0;i<n;i++){ if(h[i]>bestSoFar){bestSoFar=h[i];lastGain=i+1;} }
+    plat=lastGain;
+    return {p,n,early,late,gain:late-early,med:med(h),best:Math.max(...h),plat,
+            spark:sparkline(h,42),
+            earned:c.earned,carved:c.carved,deepest:c.deepest,banked:c.banked};
+  });
+  const bestGain=Math.max(...rows.map(r=>r.gain||0));
+  document.getElementById("labTable").innerHTML=
+    `<tr><th>POLICY</th><th>RUNS</th><th>EARLY</th><th>LATE</th><th>GAIN</th>
+         <th title="median of the whole career — compare this against the flat run">MED ALL</th>
+         <th>BEST</th><th title="run number of the last time the career set a new record">PLATEAU</th>
+         <th>🔮 EARNED</th><th>UNSPENT</th><th style="text-align:left">CARVED</th></tr>`+
+    rows.map(r=>r.none?"":`<tr class="${r.gain===bestGain&&r.n?'best':''}">
+      <td>${r.p.name}<div style="font-size:9px;color:#6f6b85">${r.p.note}</div>
+        <div style="font-family:monospace;font-size:12px;color:#8b85ff;letter-spacing:-1px">${r.spark}</div></td>
+      <td>${r.n}</td><td>${r.early}</td><td><b>${r.late}</b></td>
+      <td style="color:${r.gain>0?'#5ec27a':(r.gain<0?'#ff6b8b':'#8e89a8')}">
+        ${r.gain>0?"+":""}${r.gain}</td>
+      <td><b>${r.med}</b></td>
+      <td>${r.best}</td>
+      <td style="color:${r.plat>r.n*0.75?'#5ec27a':'#ff9f68'}">${r.plat}/${r.n}</td>
+      <td>${r.earned}</td><td>${r.banked}</td>
+      <td style="text-align:left;font-size:13px">${r.carved||'<span style="color:#6f6b85;font-size:10px">nothing — never reached a gate</span>'}</td>
+    </tr>`).join("");
+  reachAudit(Math.max(...rows.map(r=>r.best||0)),true);
+}
+
+/* ==========================================================
+   🚨 REACHABILITY AUDIT
+   Claude has now shipped unreachable content THREE times: Riot Shield @8,
+   Sniper @12, and Sigil Tier II @10 — each gated past what anyone could reach.
+   This is the standing guard so it never happens a fourth time.
+   "Anything reachable must be finished. Anything unreachable must not be shipped
+    pretending it's content."
+   ========================================================== */
+function reachAudit(bestBlock,withMeta){
+  const units=Object.keys(ENEMIES).map(k=>ENEMIES[k]).filter(d=>d.from>bestBlock);
+  /* Sigil tiers are only meaningful in a CAREER. Flagging them on a base-game
+     flat run is a false alarm — and a false alarm trains you to ignore alarms. */
+  const tiers=withMeta?TIERS.map((t,i)=>({t,i})).filter(x=>x.t.gate>bestBlock):[];
+  const el=document.getElementById("labAudit");
+  if(!el) return;
+  if(!units.length&&!tiers.length){
+    el.innerHTML=`<span style="color:#5ec27a">✅ REACHABILITY — every unit${withMeta?" and every sigil tier":""} was met at least once (best block ${bestBlock}).</span>`;
+    return;
+  }
+  el.innerHTML=`<span style="color:#ff6b8b">🚨 NEVER MET at best block ${bestBlock}:</span> `+
+    units.map(d=>`${d.face} ${d.name} <span style="color:#6f6b85">@${d.from}</span>`)
+      .concat(tiers.map(x=>`🔮 Tier ${x.i+1} ${x.t.name} <span style="color:#6f6b85">@${x.t.gate}</span>`))
+      .join(" &nbsp;·&nbsp; ")+
+    `<br><span style="color:#6f6b85">Content nobody can reach is not content. Either lower the gate or cut it.</span>`;
+}
+
+function renderLab(res){
+  const rows=POLICIES.map(p=>{
+    const R=res.get(p.name);
+    return {p,n:R.length,
+      mb:med(R.map(r=>r.block)), bb:Math.max(0,...R.map(r=>r.block)),
+      md:med(R.map(r=>r.dist)), ret:avg(R.map(r=>r.ret)),
+      left:avg(R.map(r=>r.left)), coin:avg(R.map(r=>r.coin)),
+      fired:avg(R.map(r=>r.fired)), cut:R.filter(r=>r.alive).length};
+  });
+  const bestMb=Math.max(...rows.map(r=>r.mb));
+  document.getElementById("labTable").innerHTML=
+    `<tr><th>POLICY</th><th>RUNS</th><th>MED BLOCK</th><th>BEST</th><th>MED DIST</th>
+         <th>RUNE RETURN</th><th>RUNES FIRED</th><th>LEFT UNSPENT</th><th>COIN LEFT</th>
+         <th title="runs that hit the time cap instead of dying — these UNDERSTATE the policy">⏱ CUT OFF</th></tr>`+
+    rows.map(r=>`<tr class="${r.mb===bestMb&&r.n?'best':''}">
+      <td>${r.p.name}<div style="font-size:9px;color:#6f6b85">${r.p.note}</div></td>
+      <td>${r.n}</td><td><b>${r.mb}</b></td><td>${r.bb}</td><td>${r.md}m</td>
+      <td>${r.ret?r.ret.toFixed(2)+"×":"—"}</td><td>${r.fired.toFixed(0)}</td>
+      <td>${r.left.toFixed(0)}</td><td>${r.coin.toFixed(0)}</td>
+      <td style="color:${r.cut?'#ff6b8b':'#3f7d55'}">${r.cut}</td></tr>`).join("");
+  reachAudit(Math.max(...rows.map(r=>r.bb||0)),false);
+}
+
+let labAbort=false;
+document.getElementById("labStop").onclick=()=>{labAbort=true;};
+document.getElementById("labCamp").onclick=()=>{
+  const N=Math.max(3,Math.min(250,parseInt(document.getElementById("labN").value)||12));
+  const res=new Map(); let pi=0, cur=null; labAbort=false;
+  const st=document.getElementById("labStatus");
+  const total=POLICIES.length*N; let done=0;
+  (function tick(){
+    if(labAbort){ st.textContent="stopped"; SIM=false;BOT=null;SIMM=null;
+                  clearInput(); reset(); return; }
+    try{
+      const t0=performance.now();
+      /* one RUN at a time, not one career at a time — a 250-run career
+         must never lock the tab */
+      while(performance.now()-t0<70){
+        if(!cur){
+          if(pi>=POLICIES.length) break;
+          cur=campStart(POLICIES[pi]);
+        }
+        if(cur.hist.length>=N){
+          res.set(POLICIES[pi].name,campFinish(cur));
+          cur=null; pi++; continue;
+        }
+        campStep(cur,900); done++;
+      }
+    }catch(err){
+      st.textContent="sim error — see console"; console.error(err);
+      SIM=false;BOT=null;SIMM=null; clearInput(); reset(); return;
+    }
+    if(cur) res.set(cur.pol.name,{...cur,carved:"…",banked:SIMM?SIMM.sigils:0});
+    renderCampaign(res);
+    if(pi<POLICIES.length){
+      st.textContent=`careers ${pi+1}/${POLICIES.length} — ${done}/${total} runs…`;
+      setTimeout(tick,0);
+    } else {
+      st.textContent=`done — ${POLICIES.length} careers × ${N} runs`;
+      SIM=false;BOT=null;SIMM=null; clearInput(); reset();
+    }
+  })();
+};
+document.getElementById("labRun").onclick=()=>{
+  const N=Math.max(2,Math.min(250,parseInt(document.getElementById("labN").value)||12));
+  const jobs=[]; for(const p of POLICIES) for(let i=0;i<N;i++) jobs.push(p);
+  const res=new Map(POLICIES.map(p=>[p.name,[]]));
+  let i=0; labAbort=false;
+  const st=document.getElementById("labStatus");
+  (function tick(){
+    if(labAbort){ st.textContent="stopped"; SIM=false;BOT=null; reset(); return; }
+    const t0=performance.now();
+    try{
+      while(i<jobs.length&&performance.now()-t0<70){
+        const p=jobs[i++]; res.get(p.name).push(runOne(p,900));  // 15 min of game time
+      }
+    }catch(err){
+      st.textContent="sim error — see console"; console.error(err);
+      SIM=false;BOT=null;SIMM=null; clearInput(); reset(); return;
+    }
+    st.textContent=`running… ${i}/${jobs.length}`;
+    renderLab(res);
+    if(i<jobs.length) setTimeout(tick,0);
+    else { st.textContent=`done — ${jobs.length} runs (base game)`;
+           SIM=false;BOT=null;SIMM=null; reset(); }
+  })();
+};
+
+/* ==========================================================
+   🔮 THE SIGIL SCREEN
+   Locked tiers are SHOWN, not hidden — you cannot save toward
+   something you don't know exists.
+   ========================================================== */
+let sigFromDeath=false;
+function openSig(fromDeath){
+  sigFromDeath=!!fromDeath; sigOpen=true;
+  document.getElementById("over").style.display="none";
+  document.getElementById("sig").style.display="flex";
+  renderSig();
+}
+function closeSig(){
+  sigOpen=false;
+  document.getElementById("sig").style.display="none";
+  if(sigFromDeath&&dead) document.getElementById("over").style.display="flex";
+  hud();
+}
+function renderSig(){
+  const nextGate=TIERS.find(t=>t.gate>META.deepest);
+  document.getElementById("sigHead").innerHTML=
+    `<b>🔮 ${META.sigils}</b> sigils &nbsp;·&nbsp; deepest block <b>${META.deepest}</b>`+
+    (nextGate?` &nbsp;·&nbsp; <span style="color:#6f6b85">next shelf at block ${nextGate.gate}</span>`
+             :` &nbsp;·&nbsp; <span style="color:#5ec27a">every shelf open</span>`);
+  document.getElementById("sigBody").innerHTML=TIERS.map((t,ti)=>{
+    const open=META.deepest>=t.gate;
+    const items=SIGILS.filter(s=>s.tier===ti).map(s=>{
+      const lv=META.up[s.id]|0, maxed=sigMaxed(s,lv), inf=s.max===0;
+      const price=maxed?0:sigPrice(s,lv);
+      const afford=open&&!maxed&&META.sigils>=price;
+      return `<div class="sig ${!open?'locked':''} ${maxed?'maxed':''}">
+        <div class="st"><span>${s.icon} ${open?s.name:"? ? ?"}</span>
+          <span class="lv">${inf?("♾️ LV "+lv):(maxed?"MAX":lv+"/"+s.max)}</span></div>
+        <div class="sd">${open?(s.step+(s.now?` <span style="color:#c08bff">(${s.now(lv)})</span>`:"")):"locked"}</div>
+        <button data-sig="${s.id}" ${afford?"":"disabled"}>
+          ${maxed?"COMPLETE":(open?"CARVE — 🔮"+price:"REACH BLOCK "+t.gate)}</button></div>`;
+    }).join("");
+    return `<div class="tier ${open?'':'locked'}">
+      <div class="tierHd">${open?"◆":"🔒"} TIER ${ti+1} — ${t.name}
+        ${open?"":"&nbsp;·&nbsp; reach block "+t.gate}
+        <div style="font-size:10px;letter-spacing:0;color:#6f6b85;text-transform:none;margin-top:2px">${t.blurb}</div></div>
+      <div class="sgrid">${items}</div></div>`;
+  }).join("");
+  document.querySelectorAll("#sigBody button[data-sig]").forEach(b=>{
+    b.onclick=()=>{
+      const s=SIGILS.find(x=>x.id===b.dataset.sig);
+      const lv=META.up[s.id]|0; if(sigMaxed(s,lv)) return;
+      const price=sigPrice(s,lv); if(META.sigils<price) return;
+      META.sigils-=price; META.up[s.id]=lv+1; metaSave();
+      renderSig(); hud();
+    };
+  });
+}
+document.getElementById("sigBtn").onclick=()=>{ if(sigOpen) closeSig(); else openSig(false); };
+document.getElementById("toSig").onclick=()=>openSig(true);
+document.getElementById("sigClose").onclick=closeSig;
+document.getElementById("sigWipe").onclick=()=>{
+  META={sigils:0,deepest:1,up:{}}; metaSave(); renderSig(); hud();
+};
+/* 💾 SAVE CODES. localStorage is per-browser AND per-origin — it does NOT
+   follow you to a new PC, a new phone, or even from file:// to the Wi-Fi test
+   server. Without this, moving machines silently wipes the sigil tree. */
+document.getElementById("sigExport").onclick=()=>{
+  try{ prompt("Your save code — copy all of it:", btoa(JSON.stringify(META))); }
+  catch(e){ prompt("Your save code:", JSON.stringify(META)); }
+};
+document.getElementById("sigImport").onclick=()=>{
+  const s=prompt("Paste a save code:");
+  if(!s) return;
+  let r=null;
+  try{ r=JSON.parse(atob(s.trim())); }catch(e){ try{ r=JSON.parse(s.trim()); }catch(e2){} }
+  if(r&&typeof r==="object"&&("sigils" in r)){
+    META={sigils:r.sigils|0,deepest:Math.max(1,r.deepest|0),up:r.up||{}};
+    metaSave(); renderSig(); hud();
+  } else alert("That code didn't read.");
+};
+
+/* ⛶ tap once to go fullscreen and pin landscape — Android honours the lock,
+   iOS at least gives you the extra screen height. */
+function goFullscreen(){
+  const el=document.documentElement;
+  const req=el.requestFullscreen||el.webkitRequestFullscreen;
+  if(!document.fullscreenElement && req) { try{ req.call(el); }catch(_){} }
+  if(screen.orientation && screen.orientation.lock)
+    screen.orientation.lock("landscape").catch(()=>{});
+  setTimeout(resize,250);
+}
+document.getElementById("fsBtn").onclick=goFullscreen;
+if(MOBILE){
+  /* keep retrying on taps until it actually takes — one-shot failed silently */
+  const tryGo=()=>{ if(!document.fullscreenElement) goFullscreen(); };
+  document.getElementById("stage").addEventListener("pointerdown",tryGo);
+  document.getElementById("rotate").addEventListener("pointerdown",tryGo);
+  addEventListener("fullscreenchange",()=>setTimeout(resize,200));
+}
+
+metaLoad(); resize(); reset(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
+
