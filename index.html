@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.19 — Thumbs</title>
+<title>HexCap v0.20 — Reach</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -95,17 +95,28 @@
   body.mobile #hud .stat{font-size:10px}
   body.mobile #hud .stat b{font-size:12px}
   body.mobile #hud .hearts{font-size:12px}
-  body.mobile #sigBtn,body.mobile #pauseBtn{padding:3px 8px;font-size:10px}
+  body.mobile #sigBtn,body.mobile #pauseBtn{padding:6px 12px;font-size:11px}
+  /* 📐 v0.20 REACH — keep everything out of the iPhone's rounded corners and notch.
+     (viewport-fit=cover lets the game paint edge-to-edge; these insets keep the
+     HUD and thumbs where you can actually see and reach them.) "DOWNTOWN" was
+     getting clipped by the curve in the top-left. */
+  body.mobile #hud{padding-left:max(10px,env(safe-area-inset-left));
+    padding-right:max(10px,env(safe-area-inset-right));padding-top:max(4px,env(safe-area-inset-top))}
+  /* ⛶ already full-screen (or launched from the home screen)? the button is just clutter */
+  body.standalone #fsBtn,body.isFull #fsBtn{display:none!important}
 
   body.mobile #pad{position:static;height:0;margin:0}
   body.mobile{touch-action:none}
-  body.mobile #padL,body.mobile #padR{position:fixed;bottom:10px;z-index:6;flex:none}
-  body.mobile #padL{left:10px;display:grid;gap:8px;
+  body.mobile #padL,body.mobile #padR{position:fixed;bottom:max(10px,env(safe-area-inset-bottom));z-index:6;flex:none}
+  body.mobile #padL{left:max(10px,env(safe-area-inset-left));display:grid;gap:8px;
     grid-template-columns:70px 70px;grid-template-rows:auto auto}
   body.mobile #padL #bDoor{grid-column:1/3}
   /* 🪜 weapons run UP THE RIGHT EDGE instead of sitting on top of CAST —
      less of the street covered, and the thumb just reaches up the side. */
-  body.mobile #padR{right:10px;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  /* 🔘 v0.20: weapons 2×2 on the left, CAST a TALL column on the right edge (Talon's
+     layout). A short wide CAST hid its own cooldown under the thumb — a tall one
+     leaves the fill visible above it. */
+  body.mobile #padR{right:max(10px,env(safe-area-inset-right));display:flex;flex-direction:row;align-items:flex-end;gap:8px}
   /* 🎚️ v0.19 — button size is a slider (pause screen). Scales from each corner. */
   body.mobile #padL{transform:scale(var(--bs,1));transform-origin:bottom left}
   body.mobile #padR{transform:scale(var(--bs,1));transform-origin:bottom right}
@@ -127,14 +138,16 @@
   body.mobile #padArms button{height:56px;font-size:15px}
   body.mobile #pad button{padding:0;height:56px;font-size:15px;
     background:rgba(27,32,49,.8);backdrop-filter:blur(3px)}
-  body.mobile #padR #bCast{width:140px;height:84px;font-size:16px;
+  body.mobile #padR #bCast{width:66px;height:120px;font-size:13px;line-height:1.3;
     background:rgba(60,48,110,.86);border-color:#8b85ff;color:#e8e6f0;
     position:relative;overflow:hidden}
   body.mobile #padR #bCast:active{background:#8b85ff;color:#0b0d14}
   /* ⏱️ the cooldown lives ON the button, because that's where the thumb is.
      The desktop chips have cdbars but they're hidden on mobile, so "CAST isn't
      firing" was really "you can't see the 0.3s hex recharge." */
-  #castCd{position:absolute;left:0;right:0;bottom:0;height:0;
+  /* v0.20: anchored to the TOP, so the shade drains UPWARD and the "ready" moment
+     lands at the top of the button — not under the thumb at the bottom. */
+  #castCd{position:absolute;left:0;right:0;top:0;height:0;
     background:rgba(4,5,10,.55);pointer-events:none;transition:none}
   #fsBtn{display:none}
   body.mobile #fsBtn{display:inline-block;background:#1b2031;color:#cfcbe4;
@@ -192,7 +205,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.19 — THUMBS</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.20 — REACH</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -277,7 +290,7 @@
         <button data-w="lance" id="pLance">⚡</button>
         <button id="pPot">🧪</button>
       </div>
-      <button id="bCast" class="wide">✦ CAST<i id="castCd"></i></button>
+      <button id="bCast" class="wide">✦<br>CAST<i id="castCd"></i></button>
     </div>
   </div>
 
@@ -945,6 +958,19 @@ addEventListener("DOMContentLoaded",()=>{},{once:true});
     el.addEventListener("contextmenu",e=>e.preventDefault());
   });
 });
+/* 🐛 v0.20 — "the pause button won't work." On iPhone, preventDefault() on
+   touchstart (the line above, which kills the Copy/Search popup) ALSO cancels the
+   click the browser would have synthesized — so ⏸ PAUSE, 🔮 SIGILS and ⛶ FULL,
+   which all listen for click, were dead to a thumb. Fire them on the touch itself.
+   Mouse still uses the normal click, so desktop is unchanged. */
+document.querySelectorAll("#hud button").forEach(b=>{
+  b.addEventListener("pointerdown",e=>{ if(e.pointerType==="mouse") return; e.preventDefault(); b.click(); });
+});
+/* ⛶ hide the FULL button once it has nothing left to do */
+if(navigator.standalone===true||matchMedia("(display-mode: standalone)").matches||
+   matchMedia("(display-mode: fullscreen)").matches) document.body.classList.add("standalone");
+addEventListener("fullscreenchange",()=>document.body.classList.toggle("isFull",!!document.fullscreenElement));
+addEventListener("webkitfullscreenchange",()=>document.body.classList.toggle("isFull",!!document.webkitFullscreenElement));
 // ② buttons never keep focus, so Space is always "cast"
 addEventListener("click",e=>{ const t=e.target; if(t&&t.tagName==="BUTTON") t.blur(); });
 // typing in the Bot Lab's number box must not drive the wizard
