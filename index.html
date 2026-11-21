@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.20 — Reach</title>
+<title>HexCap v0.21 — Playtest</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -116,7 +116,18 @@
   /* 🔘 v0.20: weapons 2×2 on the left, CAST a TALL column on the right edge (Talon's
      layout). A short wide CAST hid its own cooldown under the thumb — a tall one
      leaves the fill visible above it. */
-  body.mobile #padR{right:max(10px,env(safe-area-inset-right));display:flex;flex-direction:row;align-items:flex-end;gap:8px}
+  /* 🔘 v0.21 — try #3 (Talon): CAST is a BIG SQUARE in the corner, the four small
+     buttons are half its size and wrap it in an L — two on top, two on its left.
+        .  ✦  🔥
+        ⚡ [CAST]
+        🧪 [CAST]
+     #padArms becomes display:contents so its buttons sit in #padR's grid. */
+  body.mobile #padR{right:max(10px,env(safe-area-inset-right));display:grid;
+    grid-template-columns:52px 52px 52px;grid-template-rows:52px 52px 52px;gap:6px}
+  body.mobile #padR #padArms{display:contents}
+  body.mobile #padR #padArms button{width:100%;height:100%;font-size:15px}
+  body.mobile #padR #pHex{grid-column:2;grid-row:1} body.mobile #padR #pEmber{grid-column:3;grid-row:1}
+  body.mobile #padR #pLance{grid-column:1;grid-row:2} body.mobile #padR #pPot{grid-column:1;grid-row:3}
   /* 🎚️ v0.19 — button size is a slider (pause screen). Scales from each corner. */
   body.mobile #padL{transform:scale(var(--bs,1));transform-origin:bottom left}
   body.mobile #padR{transform:scale(var(--bs,1));transform-origin:bottom right}
@@ -126,19 +137,31 @@
   body.mobile.slideMode #slide{display:block;position:absolute;left:0;top:0;bottom:0;width:50%;
     touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   body.mobile.slideMode #padL #bL,body.mobile.slideMode #padL #bR{display:none}
+  /* v0.21: in SLIDE mode the left thumb needs NO buttons at all — swipe ↑ is the
+     door. The watermark below teaches the gestures instead. (Buttons mode keeps ▼.) */
+  body.mobile.slideMode #padL{display:none}
   #slideRing,#slideKnob{position:absolute;pointer-events:none;border-radius:50%;display:none;
     transform:translate(-50%,-50%)}
   #slideRing{width:64px;height:64px;border:2px solid rgba(139,133,255,.35)}
   #slideKnob{width:34px;height:34px;background:rgba(139,133,255,.4)}
-  #slideHint{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);pointer-events:none;
-    font-size:11px;letter-spacing:1px;color:rgba(207,203,228,.45);white-space:nowrap;transition:opacity .6s}
+  /* 🖋️ v0.21 WATERMARK — the controls painted faintly onto the street, always there,
+     never something to press. Talon: "kind of like a watermark… so you can see what
+     the controls are without it actually being something you have to touch." */
+  #slideHint{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);pointer-events:none;
+    display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto auto auto auto;
+    align-items:center;justify-items:center;gap:4px 18px;
+    font:bold 12px Verdana,sans-serif;letter-spacing:1px;color:rgba(207,203,228,.16);white-space:nowrap}
+  #slideHint .big{font-size:30px;line-height:1}
+  #slideHint .up{grid-column:2;grid-row:1} #slideHint .l{grid-column:1;grid-row:2}
+  #slideHint .mid{grid-column:2;grid-row:2;font-size:11px} #slideHint .r{grid-column:3;grid-row:2}
+  #slideHint .dn{grid-column:2;grid-row:3} #slideHint .tap{grid-column:1/4;grid-row:4;font-size:10px;margin-top:6px}
   #ctrlRow{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:10px;
     font-size:12px;color:#8e89a8}
   body.mobile #padArms{display:grid;grid-template-columns:66px 66px;gap:8px}
   body.mobile #padArms button{height:56px;font-size:15px}
   body.mobile #pad button{padding:0;height:56px;font-size:15px;
     background:rgba(27,32,49,.8);backdrop-filter:blur(3px)}
-  body.mobile #padR #bCast{width:66px;height:120px;font-size:13px;line-height:1.3;
+  body.mobile #padR #bCast{grid-column:2/4;grid-row:2/4;width:100%;height:100%;font-size:16px;line-height:1.3;
     background:rgba(60,48,110,.86);border-color:#8b85ff;color:#e8e6f0;
     position:relative;overflow:hidden}
   body.mobile #padR #bCast:active{background:#8b85ff;color:#0b0d14}
@@ -205,7 +228,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.20 — REACH</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.21 — PLAYTEST</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -239,7 +262,12 @@
     <div id="banner"></div>
     <!-- 🕹️ v0.19: left-thumb slide zone. Sits under every panel (DOM order). -->
     <div id="slide"><div id="slideRing"></div><div id="slideKnob"></div>
-      <div id="slideHint">slide ◀ ▶ to move · tap to turn · swipe ↑ door ↓ out</div></div>
+      <div id="slideHint">
+        <div class="up"><span class="big">↑</span><br>DOOR</div>
+        <div class="l big">◀</div><div class="mid">SLIDE</div><div class="r big">▶</div>
+        <div class="dn">OUT<br><span class="big">↓</span></div>
+        <div class="tap">TAP = TURN</div>
+      </div></div>
     <div class="panel" id="shop">
       <h2>🚪 THE DOOR</h2>
       <div id="vline"></div>
@@ -492,24 +520,30 @@ const ENEMIES = {
           col:"#c9705a",face:"😠",coin:1,  from:0,wt:10,rampB:1,fade:8},
   mob   :{name:"Mob",         hp:1,speed:66, dmg:1,cost:3,w:22,h:42,stagger:1.0,mass:0.8,
           col:"#b06a8a",face:"🤬",coin:3,  from:2,wt:7, rampB:2,fade:16,group:4},
+  /* 📅 v0.21 DEBUT RHYTHM — Talon: "a new unit every block is a little much."
+     New units land on display blocks ending in 3·6·9: 3, 6, 9 · (boss 10) ·
+     13, 16, 19 · (boss 20). `from` is a 0-based block index, so block 3 = from:2.
+     Thug + Bat Runner open the street together, so the early game still has two
+     kinds of trouble and the Sniper still arrives by block 19.
+     🐛 Also fixes "the Shotgunner is never announced": he debuted on index 9 —
+     a BOSS block — where the boss banner replaces the debut banner and the debut
+     spawn is skipped. No debut may ever land on a boss block. */
   runner:{name:"Bat Runner",  hp:2,speed:112,dmg:1,cost:2,w:24,h:44,stagger:0.7,mass:0.8,
-          col:"#d9a13b",face:"😤",coin:4,  from:1,wt:8, rampB:2,fade:12},
+          col:"#d9a13b",face:"😤",coin:4,  from:0,wt:8, rampB:2,fade:12},
   brute :{name:"Brass Brute", hp:7,speed:42, dmg:2,cost:4,w:38,h:56,stagger:0.0,mass:4,
-          col:"#8d8f9e",face:"😡",coin:16, from:3,wt:6, rampB:3},
-  /* intro schedule pulled forward — deaths cluster at blocks 8–11, so a unit
-     that debuts at 10 is a unit nobody has actually fought. */
+          col:"#8d8f9e",face:"😡",coin:16, from:5,wt:6, rampB:3},
   cop   :{name:"Pistol Cop",  hp:2,speed:60, dmg:1,cost:3,w:26,h:46,stagger:1.0,mass:1,
-          col:"#4f7fb5",face:"🔫",coin:11, from:5,wt:7, rampB:3, ranged:"pistol"},
+          col:"#4f7fb5",face:"🔫",coin:11, from:8,wt:7, rampB:3, ranged:"pistol"},
   shield:{name:"Riot Shield", hp:3,speed:40, dmg:2,cost:5,w:34,h:52,stagger:0.2,mass:3,
-          col:"#5a6b7a",face:"🛡️",coin:14, from:7,wt:6, rampB:3, shield:true, slowTurn:true},
+          col:"#5a6b7a",face:"🛡️",coin:14, from:12,wt:6, rampB:3, shield:true, slowTurn:true},
   gunner:{name:"Shotgunner",  hp:3,speed:54, dmg:2,cost:4,w:28,h:48,stagger:0.8,mass:1.2,
-          col:"#a4603f",face:"💥",coin:13, from:9,wt:6,rampB:3, ranged:"shotgun"},
+          col:"#a4603f",face:"💥",coin:13, from:15,wt:6,rampB:3, ranged:"shotgun"},
   /* 🎯 THE SNIPER — the ONE unit that is meant to threaten you from off-screen.
      Announced by a scope glint at the screen edge, never by a free radar ping.
      His round IS hex-swattable. Killing him means a Lance down the line or
      closing the distance yourself. (Talon's design, 2026-11-10.) */
   sniper:{name:"Sniper",      hp:2,speed:30, dmg:2,cost:5,w:24,h:44,stagger:1.0,mass:0.9,
-          col:"#6b5b8a",face:"🎯",coin:22, from:10,wt:5,rampB:3, ranged:"rifle"}
+          col:"#6b5b8a",face:"🎯",coin:22, from:18,wt:5,rampB:3, ranged:"rifle"}
 };
 const RANGED={
   pistol :{get hold(){return TUNE.copRange}, get wind(){return TUNE.windup},
@@ -804,7 +838,9 @@ function hash32(n){
   n=n|0;n=(n^61)^(n>>>16);n=(n+(n<<3))|0;n=n^(n>>>4);
   n=Math.imul(n,0x27d4eb2d);n=n^(n>>>15);return (n>>>0)/4294967296;
 }
-function coinOf(d){ return Math.max(0,Math.round(d.coin*coinMult())); }
+/* v0.21: bosses kept paying exactly 666. Not a number to hand out in a game
+   people's families play, so any payout containing it nudges up by one. */
+function coinOf(d){ let c=Math.max(0,Math.round(d.coin*coinMult())); if(String(c).includes("666")) c+=1; return c; }
 
 /* ==========================================================
    📉 THE EROSION — the engine that makes an endless street endless.
@@ -845,8 +881,11 @@ function doorsForBlock(b){
     /* right at the line: buy, step out, and it's on you */
     list.push({x:start+len*0.95,locked:false,known:true,looted:true,spent:false,
                w:54,vendor:true,roll:1});
+    /* v0.21: which cover door is locked is RANDOM per boss — "the middle one is
+       always locked" turned a gamble into a memorized fact. */
+    const lockI=Math.floor(hash32(b*719+3)*3)%3;
     for(let i=0;i<3;i++)                        // three COVER doors inside the cage
-      list.push({x:start+len*(0.765+i*0.078), locked:i===1, known:false,
+      list.push({x:start+len*(0.765+i*0.078), locked:i===lockI, known:false,
                  looted:false, spent:false, w:46, vendor:false,
                  roll:hash32(b*313+i*29+13)});
     doors.set(b,list); return list;
@@ -1081,7 +1120,6 @@ slideEl.addEventListener("pointerdown",e=>{
   slid={id:e.pointerId,x0:e.clientX,y0:e.clientY,ax:e.clientX,t0:performance.now(),max:0,state:"?"};
   slideRing.style.left=x+"px"; slideRing.style.top=y+"px"; slideRing.style.display="block";
   slideKnob.style.left=x+"px"; slideKnob.style.top=y+"px"; slideKnob.style.display="block";
-  const h=document.getElementById("slideHint"); if(h) h.style.opacity="0";
 });
 slideEl.addEventListener("pointermove",e=>{
   if(!slid||e.pointerId!==slid.id) return;
@@ -1170,7 +1208,9 @@ function doorAction(){
   if(P.entryT>0){ P.entryT=0;P.entryDoor=null; return; }
   const d=nearbyDoor(P.x); if(!d) return;
   if(d.vendor){ openShop(d); return; }
-  if(d.known&&d.locked){ P.pickDoor=d; P.pickP=0.0001; return; }
+  /* v0.21: 🚪 Dowsing already SHOWS the lock, so skip the "try the handle" step
+     and start picking straight away. Knowing should save you time. */
+  if((d.known||upg("dowsing"))&&d.locked){ d.known=true; P.pickDoor=d; P.pickP=0.0001; return; }
   P.entryT=TUNE.entry; P.entryDoor=d;
 }
 function finishEntry(){
@@ -1472,9 +1512,13 @@ function step(dt){
          so hexing down-range becomes suppression. */
       const R=hexReach();
       let tgt=null,td=1e9,tBullet=null;
+      /* 🎯 v0.21 — reach is measured to the enemy's FRONT EDGE, not its center.
+         The reach line on screen touched a body and the cast still whiffed,
+         because the center was half a body further away. Uses each enemy's
+         own width from its data, so reshaping a unit later stays correct. */
       for(const e of enemies){
         const dx=(e.x-P.x)*P.face;
-        if(dx>0&&dx<=R&&dx<td){td=dx;tgt=e;}
+        if(dx>0&&dx-(e.def.w||24)*0.5<=R&&dx<td){td=dx;tgt=e;}
       }
       if(TUNE.hexPops){
         for(const b of ebolts){
@@ -1574,7 +1618,9 @@ function step(dt){
         for(let i=0;i<2;i++){
           const d=pool[(Math.random()*pool.length)|0];
           const left=Math.random()<0.5;
-          enemies.push(makeEnemy(d, left?arena.lo-30-i*30:arena.hi+30+i*30, left?1:-1));
+          const s=makeEnemy(d, left?arena.lo-30-i*30:arena.hi+30+i*30, left?1:-1);
+          s.summon=true;                        // the ONLY things allowed through the cage walls
+          enemies.push(s);
         }
         floats.push({x:b.x,y:GROUND-b.def.h-30,txt:"ON ME!",col:"#9fd0ff",t:1.1,vy:-28});
       }
@@ -1614,6 +1660,13 @@ function step(dt){
   /* ---- enemies ---- */
   for(const e of enemies){
     if(e.hp<=0) continue;
+    /* 🔒 v0.21 — "units come through the boss wall." The walls cleared the arena
+       once, when they dropped, but anything already walking toward you strolled
+       straight in. Now the walls stay solid: only the boss and his summons live
+       inside the cage. Anyone else who touches it is gone, same as at the drop. */
+    if(arena.active&&!e.isBoss&&!e.summon&&e.x>arena.lo-8&&e.x<arena.hi+8){
+      e.hp=-99; if(!SIM) puff(e.x,GROUND-30,"#6f6b85",5); continue;
+    }
     e.flash=Math.max(0,e.flash-dt); e.hitCD=Math.max(0,e.hitCD-dt);
     e.stun=Math.max(0,e.stun-dt); e.bob+=dt*6;
     if(e.laneCD>0) e.laneCD-=dt;
@@ -1622,9 +1675,13 @@ function step(dt){
 
     if(P.hidden){
       e.aim=0;                                    // can't shoot what they can't see
-      if(Math.abs(e.x-P.x)>150) e.idle=Math.min(1,(e.idle||0)+dt*0.7);
-      e.x+=e.facing*e.def.speed*slow*(1-0.75*(e.idle||0))*dt;
-      if(e.idle>=1) e.x+=Math.sin(e.bob*0.6)*12*dt;
+      /* 🚶 v0.21 — they just KEEP WALKING. Same speed, same direction. The old
+         "confused, slowing, milling about" made a slow pack crawl past your
+         door forever. Talon: "Just simplify. They just keep moving on down the
+         sidewalk." Still the Door Law: the threat is relocated, not deleted. */
+      e.idle=0;
+      e.x+=e.facing*e.def.speed*slow*dt;
+      if(e.isBoss&&arena.active) e.x=Math.max(arena.lo+20,Math.min(arena.hi-20,e.x));   // a boss never leaves its cage
       continue;
     }
 
@@ -1913,12 +1970,17 @@ function draw(){
   ctx.fillStyle=D.dark;
   const s0=Math.floor(cam/70)-1;
   for(let i=s0;i<s0+Math.ceil(VW/70)+3;i++){ ctx.fillRect(i*70-cam,GROUND+16,64,3); }
-  ctx.font="bold 11px Verdana"; ctx.textAlign="center";
+  /* v0.21 — "BLOCK 1" was centered on its line, and block 1's line sits at the
+     very left edge, so half the word fell off the screen (and under the iPhone's
+     curve). Every label now hangs to the RIGHT of its line, the same way for all
+     blocks, and never closer than 52px to the left edge. */
+  ctx.font="bold 11px Verdana"; ctx.textAlign="left";
   for(let k=b0;k<=b0+3;k++){
     const px=k*TUNE.blockLen-cam; if(px<-40||px>VW+40) continue;
     ctx.fillStyle="#2f3550"; ctx.fillRect(px-1,GROUND,2,VH-GROUND);
-    ctx.fillStyle="#4a5176"; ctx.fillText("BLOCK "+(k+1),px,GROUND+40);
+    ctx.fillStyle="#4a5176"; ctx.fillText("BLOCK "+(k+1),Math.max(px+8,52),GROUND+40);
   }
+  ctx.textAlign="center";
 
   /* 🔒 THE CAGE — two walls of the same stuff you throw */
   if(arena.active){
