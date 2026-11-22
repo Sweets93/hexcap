@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.21 — Playtest</title>
+<title>HexCap v0.22 — Jake</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -147,14 +147,45 @@
   /* 🖋️ v0.21 WATERMARK — the controls painted faintly onto the street, always there,
      never something to press. Talon: "kind of like a watermark… so you can see what
      the controls are without it actually being something you have to touch." */
-  #slideHint{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);pointer-events:none;
+  /* v0.22: it sat over the left side of the STREET. Now it's small and lives down
+     in the sidewalk strip under the road — where the thumbs live, not the fight. */
+  #slideHint{position:absolute;left:max(16px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));
+    pointer-events:none;
     display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto auto auto auto;
-    align-items:center;justify-items:center;gap:4px 18px;
-    font:bold 12px Verdana,sans-serif;letter-spacing:1px;color:rgba(207,203,228,.16);white-space:nowrap}
-  #slideHint .big{font-size:30px;line-height:1}
+    align-items:center;justify-items:center;gap:1px 10px;
+    font:bold 9px Verdana,sans-serif;letter-spacing:1px;color:rgba(207,203,228,.18);white-space:nowrap}
+  #slideHint .big{font-size:17px;line-height:1}
   #slideHint .up{grid-column:2;grid-row:1} #slideHint .l{grid-column:1;grid-row:2}
   #slideHint .mid{grid-column:2;grid-row:2;font-size:11px} #slideHint .r{grid-column:3;grid-row:2}
-  #slideHint .dn{grid-column:2;grid-row:3} #slideHint .tap{grid-column:1/4;grid-row:4;font-size:10px;margin-top:6px}
+  #slideHint .dn{grid-column:2;grid-row:3} #slideHint .tap{grid-column:1/4;grid-row:4;font-size:8px;margin-top:3px}
+  #slideHint .mid{font-size:8px}
+  /* 🙈 v0.22 — "the controls are in the way of the shop." Any menu open (The Door,
+     pause, death, sigils) and the thumb pads + slide zone step aside entirely. */
+  body.mobile.menuOpen #padL,body.mobile.menuOpen #padR,body.mobile.menuOpen #slide{display:none!important}
+  body.mobile.pausedView #padL,body.mobile.pausedView #padR{opacity:.4;pointer-events:none}
+  body.mobile.pausedView #slide{display:none!important}
+  /* 🔤 v0.22 — Jake: "wish the text was bigger." Phone menus read at arm's length now. */
+  body.mobile .res{font-size:14px} body.mobile .res b{font-size:17px}
+  body.mobile #vline{font-size:15px} body.mobile #vwarn{font-size:12px}
+  body.mobile .buy{min-width:150px;padding:11px 14px}
+  body.mobile .buy .t{font-size:17px} body.mobile .buy .d{font-size:13px}
+  body.mobile .buy button{font-size:15px;padding:9px} body.mobile .buy .row2 button{font-size:13px;padding:7px}
+  body.mobile #sigHead{font-size:15px} body.mobile #sigHead b{font-size:18px}
+  body.mobile .tierHd{font-size:13px}
+  body.mobile .sgrid{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:9px}
+  body.mobile .sig{padding:10px 12px}
+  body.mobile .sig .st{font-size:16px} body.mobile .sig .lv{font-size:13px}
+  body.mobile .sig .sd{font-size:14px;line-height:1.45}
+  body.mobile .sig button{font-size:15px;padding:9px}
+  body.mobile .panel h2{font-size:28px}
+  /* 🏷️ v0.22 — Jake didn't know the white ✦ was Hex. Every small button says what
+     it is, Hex wears its purple, and CAST shows the icon of whatever's armed. */
+  body.mobile #padR #padArms button{position:relative;line-height:1;padding-bottom:10px}
+  body.mobile #padR #padArms button::after{content:attr(data-label);position:absolute;left:0;right:0;bottom:4px;
+    font-size:8px;letter-spacing:.5px;color:#8e89a8;font-weight:bold}
+  body.mobile #padR #pHex{color:#b9a8ff}
+  #castIcon{font-size:22px;line-height:1}
+  #sizeVal{min-width:38px;display:inline-block;text-align:center;color:#e8e6f0}
   #ctrlRow{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:10px;
     font-size:12px;color:#8e89a8}
   body.mobile #padArms{display:grid;grid-template-columns:66px 66px;gap:8px}
@@ -228,7 +259,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.21 — PLAYTEST</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.22 — JAKE</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -254,7 +285,7 @@
     <div class="arm sel" data-w="hex"><div class="n">✦</div><div class="l">HEX</div><div class="c">∞</div><div class="r" id="rHex">close</div><div class="cdbar"><i></i></div></div>
     <div class="arm" data-w="ember"><div class="n">🔥</div><div class="l">EMBER</div><div class="c" id="nEmber">0</div><div class="r" id="rEmber">far · heavy</div><div class="cdbar"><i></i></div></div>
     <div class="arm" data-w="lance"><div class="n">⚡</div><div class="l">LANCE</div><div class="c" id="nLance">0</div><div class="r" id="rLance">far · pierces</div><div class="cdbar"><i></i></div></div>
-    <div class="arm" id="potChip" style="max-width:120px"><div class="n">🧪</div><div class="l">POULTICE</div><div class="c" id="nPot">0</div><div class="r">4 · use</div><div class="cdbar"><i></i></div></div>
+    <div class="arm" id="potChip" style="max-width:120px"><div class="n">🧪</div><div class="l">POTION</div><div class="c" id="nPot">0</div><div class="r">4 · use</div><div class="cdbar"><i></i></div></div>
   </div>
 
   <div id="stage">
@@ -282,7 +313,10 @@
       <div id="ctrlRow">
         <span>Controls:</span>
         <button class="btn" id="ctrlMode" style="padding:6px 12px;font-size:12px">🕹️ SLIDE</button>
-        <label>Button size <input type="range" id="ctrlSize" min="0.8" max="1.4" step="0.05"></label>
+        <span>Button size</span>
+        <button class="btn" id="sizeDn" style="padding:6px 14px;font-size:16px">−</button>
+        <span id="sizeVal">100%</span>
+        <button class="btn" id="sizeUp" style="padding:6px 14px;font-size:16px">+</button>
       </div></div>
     <div class="panel" id="over"><h2>THEY GOT YOU</h2>
       <div class="res" id="overRes"></div>
@@ -313,12 +347,12 @@
     </div>
     <div id="padR">
       <div id="padArms">
-        <button data-w="hex"   id="pHex">✦</button>
-        <button data-w="ember" id="pEmber">🔥</button>
-        <button data-w="lance" id="pLance">⚡</button>
-        <button id="pPot">🧪</button>
+        <button data-w="hex"   id="pHex"   data-label="HEX">✦</button>
+        <button data-w="ember" id="pEmber" data-label="EMBER">🔥</button>
+        <button data-w="lance" id="pLance" data-label="LANCE">⚡</button>
+        <button id="pPot" data-label="POTION">🧪</button>
       </div>
-      <button id="bCast" class="wide">✦<br>CAST<i id="castCd"></i></button>
+      <button id="bCast" class="wide"><span id="castIcon">✦</span><br>CAST<i id="castCd"></i></button>
     </div>
   </div>
 
@@ -330,7 +364,7 @@
 
   <div class="keys">
     <kbd>A</kbd><kbd>D</kbd> move &amp; face · <kbd>Space</kbd> cast · <kbd>S</kbd> door / pick lock ·
-    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>/<kbd>Q</kbd><kbd>E</kbd> switch · <kbd>4</kbd> drink a poultice ·
+    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>/<kbd>Q</kbd><kbd>E</kbd> switch · <kbd>4</kbd> drink a potion ·
     <kbd>P</kbd> pause · <kbd>R</kbd> restart
   </div>
 
@@ -408,9 +442,9 @@
         <div class="row"><label>Hex swats bullets</label><input type="checkbox" id="t_hexPops" checked></div>
       </div>
       <div class="tgroup key">
-        <h4>🧪 POULTICES</h4>
+        <h4>🧪 POTIONS</h4>
         <div class="row"><label>🩹 Mend price</label><input type="range" id="t_mendCost" min="4" max="60" step="2"><output></output></div>
-        <div class="row"><label>🧪 Poultice price</label><input type="range" id="t_potCost" min="4" max="60" step="2"><output></output></div>
+        <div class="row"><label>🧪 Potion price</label><input type="range" id="t_potCost" min="4" max="60" step="2"><output></output></div>
         <div class="row"><label>Max carried</label><input type="range" id="t_potMax" min="0" max="8" step="1"><output></output></div>
         <div class="row"><label>Use time (s)</label><input type="range" id="t_potTime" min="0" max="2.5" step="0.1"><output></output></div>
       </div>
@@ -459,7 +493,7 @@
       <b>RUNE RETURN is the number that matters now.</b> It's coin earned from rune kills ÷ coin spent on those runes.
       Above <b>1.0×</b> means spending runes is paying for itself — below it, you're bleeding. The old "coin per rune"
       was lying to us: it just measured how rarely you fired.<br><br>
-      <b>🩹 MEND vs 🧪 POULTICE</b> — Mend heals you on the spot at The Door (wallet-limited). Poultices are the
+      <b>🩹 MEND vs 🧪 POTION</b> — Mend heals you on the spot at The Door (wallet-limited). Potions are the
       field reserve you carry out, capped, and drinking one roots you.<br><br>
       <b>Roster shows up sooner:</b> Mob @2, Pistol Cop @5, Riot Shield @7, Shotgunner @9 — because deaths cluster
       around blocks 8–11 and a unit that debuts at 10 is a unit nobody has actually fought.<br><br>
@@ -667,7 +701,7 @@ const SIGILS=[
   {id:"hardy",   tier:0,icon:"🫀",name:"Hardy",      max:3,cost:[3,6,11],
    step:"+1 max heart",        now:lv=>`${TUNE.hp+lv} → ${TUNE.hp+lv+1} hearts`},
   {id:"pockets", tier:0,icon:"🧪",name:"Deep Pockets",max:2,cost:[4,9],
-   step:"+1 poultice carried",  now:lv=>`${TUNE.potMax+lv} → ${TUNE.potMax+lv+1}`},
+   step:"+1 potion carried",  now:lv=>`${TUNE.potMax+lv} → ${TUNE.potMax+lv+1}`},
   /* was "+2 starting embers" — ≈12 coin in a game where you finish runs with
      5,000. STARTING RESOURCES ARE WORTHLESS ONCE THE EARLY GAME IS EASY (the
      same disease that killed Deep Coffers at +8). Salvage pays all run and
@@ -696,7 +730,7 @@ const SIGILS=[
      vendor/boss alignment. An upgrade that breaks the game's rhythm is not an
      upgrade. (Talon: "I don't really like that one.") */
   {id:"steady",  tier:2,icon:"🩹",name:"Steady Hands",max:1,cost:[70],
-   step:"drinking a poultice no longer roots you"},
+   step:"drinking a potion no longer roots you"},
   {id:"secondwind",tier:2,icon:"⏳",name:"Second Wind",max:1,cost:[260],
    step:"once per run the blow that should kill you doesn't — you come back on 2 hearts and everything near you reels"},
 
@@ -940,7 +974,7 @@ function reset(){
   cam=0;budget=2;burstT=1.4;blockIdx=0;kills=0;lastX=60;
   arena={active:false,lo:0,hi:0,boss:null,summonT:0,bossMax:1,
          pending:null,trigger:0,block:0,cine:0};
-  dead=false;paused=false;shopOpen=false;shake=0;bannerT=0;shopDoor=null;
+  dead=false;paused=false;shopOpen=false;shake=0;bannerT=0;shopDoor=null;lastGlitch="";
   led={earn:0,spend:0,fired:0,hex:0,stash:0,pick:0,back:0,shield:0,
        pop:0, runeCost:0, runeKillCoin:0};
   if(SIM) return;
@@ -1086,13 +1120,17 @@ function applyCtrl(){
   document.body.classList.toggle("slideMode",CTRL.mode==="slide");
   document.documentElement.style.setProperty("--bs",CTRL.size);
   const m=document.getElementById("ctrlMode"); if(m) m.textContent=CTRL.mode==="slide"?"🕹️ SLIDE":"🔘 BUTTONS";
-  const s=document.getElementById("ctrlSize"); if(s) s.value=CTRL.size;
+  const s=document.getElementById("sizeVal"); if(s) s.textContent=Math.round(CTRL.size*100)+"%";
   try{ localStorage.setItem("hexcap_ctrl",JSON.stringify(CTRL)); }catch(_){}
 }
 document.getElementById("ctrlMode").addEventListener("click",()=>{
   CTRL.mode=CTRL.mode==="slide"?"buttons":"slide"; clearInput(); applyCtrl(); });
-document.getElementById("ctrlSize").addEventListener("input",e=>{
-  CTRL.size=Math.max(0.8,Math.min(1.4,+e.target.value||1)); applyCtrl(); });
+/* 🎚️ v0.22 — the drag slider was glitchy on phones (sometimes dragged, sometimes
+   only tapped: the page's touch blocking fights native range inputs). Two plain
+   buttons can't misbehave. 80%–140% in 10% steps. */
+function bumpSize(d){ CTRL.size=Math.round(Math.max(0.8,Math.min(1.4,CTRL.size+d))*100)/100; applyCtrl(); }
+document.getElementById("sizeDn").addEventListener("click",()=>bumpSize(-0.1));
+document.getElementById("sizeUp").addEventListener("click",()=>bumpSize(0.1));
 
 const SL={DEAD:10, ROLL:22, TAP_MS:220, TAP_MOVE:14, SWIPE:42};   // px / ms
 const slideEl=document.getElementById("slide");
@@ -1284,7 +1322,7 @@ function renderShop(){
     {k:"ember",t:"🔥 EMBER",d:"Heavy, long range. The brute-killer.",c:()=>TUNE.emberCost},
     {k:"lance",t:"⚡ LANCE",d:"Pierces everything in the line.",c:()=>TUNE.lanceCost},
     {k:"mend", t:"🩹 MEND",   d:"One heart back, right here, right now.",c:()=>TUNE.mendCost},
-    {k:"pot",  t:"🧪 POULTICE",d:"Carry it out. Drinking roots you.",c:()=>TUNE.potCost}
+    {k:"pot",  t:"🧪 POTION",d:"Carry it out. Drinking roots you.",c:()=>TUNE.potCost}
   ];
   const wrap=document.getElementById("buys"); wrap.innerHTML="";
   for(const def of defs){
@@ -1417,20 +1455,42 @@ function makeEnemy(d,x,dir){
 
 /* ---------------- loop ---------------- */
 let last=performance.now();
+/* 🛟 v0.22 — THE DEATH FREEZE (Jake hit it; Talon once). The next frame was only
+   scheduled if step() and draw() finished. ONE thrown error anywhere — e.g. the
+   phone refusing a localStorage write inside die() on a new best — and the loop
+   simply stopped: frozen on the shaking death frame, no panel, no pause, kill the
+   app. Now the next frame is booked FIRST, every error is caught, and if you're
+   dead the game-over panel is guaranteed to show. The caught message prints on
+   that panel so a tester can tell us what happened. */
+let lastGlitch="";
+function glitch(where,e){
+  lastGlitch=where+": "+(e&&e.message||e);
+  try{ console.error("[HexCap]",where,e); }catch(_){}
+}
 function frame(now){
+  requestAnimationFrame(frame);                       // booked first: nothing can stop the loop
   const dt=Math.min(0.05,(now-last)/1000); last=now;
-  if(SIM){ requestAnimationFrame(frame); return; }   // bots own the world right now
-  /* 🎬 the entrance: time stops for the title card */
-  if(arena&&arena.cine>0){
-    arena.cine-=dt;
-    /* 🐛 shake decays in step(), and the cinema SKIPS step() — so the screen
-       rattled for the entire card and the name was unreadable. Let the street
-       settle while the card holds. (Talon, 2026-11-11.) */
-    shake=Math.max(0,shake-dt*2.2);
-    draw(); requestAnimationFrame(frame); return;
+  if(SIM) return;                                     // bots own the world right now
+  try{
+    /* 🎬 the entrance: time stops for the title card */
+    if(arena&&arena.cine>0){
+      arena.cine-=dt;
+      /* 🐛 shake decays in step(), and the cinema SKIPS step() — so the screen
+         rattled for the entire card and the name was unreadable. Let the street
+         settle while the card holds. (Talon, 2026-11-11.) */
+      shake=Math.max(0,shake-dt*2.2);
+    } else if(!dead&&!paused&&!shopOpen&&!sigOpen&&!rotNeeded) step(dt);   // sideways or nothing
+  }catch(e){ glitch("step",e); }
+  try{ draw(); }catch(e){ glitch("draw",e); }
+  /* 🙈 v0.22: menus get the whole screen. PAUSE is the exception: the button-size
+     control lives there, so the pads stay as a faded, untouchable preview. */
+  const menu=!!(dead||shopOpen||sigOpen), pz=!!paused&&!menu;
+  if(document.body.classList.contains("menuOpen")!==menu){ document.body.classList.toggle("menuOpen",menu); if(menu) clearInput(); }
+  if(document.body.classList.contains("pausedView")!==pz){ document.body.classList.toggle("pausedView",pz); if(pz) clearInput(); }
+  if(dead&&!sigOpen){
+    const ov=document.getElementById("over");
+    if(ov&&ov.style.display!=="flex"){ ov.style.display="flex"; shake=0; }
   }
-  if(!dead&&!paused&&!shopOpen&&!sigOpen&&!rotNeeded) step(dt);   // sideways or nothing
-  draw(); requestAnimationFrame(frame);
 }
 
 function hitEnemy(e,dmg,fromDir,isHex,src){
@@ -1670,6 +1730,7 @@ function step(dt){
     e.flash=Math.max(0,e.flash-dt); e.hitCD=Math.max(0,e.hitCD-dt);
     e.stun=Math.max(0,e.stun-dt); e.bob+=dt*6;
     if(e.laneCD>0) e.laneCD-=dt;
+    if(e.turnCD>0) e.turnCD-=dt;
     if(e.grace>0){ e.grace-=dt; e.aim=0; e.hitCD=Math.max(e.hitCD,e.grace); }
     const slow=e.stun>0?0.3:1;
 
@@ -1741,6 +1802,28 @@ function step(dt){
   }
   enemies=enemies.filter(e=>e.hp>0);
 
+  /* 🚦 v0.22 — THE DOOR DEADLOCK (found by Jake). Two Mobs of four, one from each
+     side, meet head-on outside your door. Same lane + opposite directions had no
+     rule except "push apart," so they piled up there forever, and stepping out
+     meant eating all of them. While you're hidden, a head-on pair first tries to
+     SIDESTEP into a free lane; if every lane is full, the lighter one TURNS
+     AROUND and walks the other way. (Talon's call: not more lanes.) Only while
+     hidden: out on the street, both sides closing on you is the pincer — the game. */
+  function laneFree(u,L){
+    for(const o of enemies){
+      if(o===u||o.hp<=0||o.lane!==L) continue;
+      if(Math.abs(o.x-u.x)<(o.def.w+u.def.w)*0.75) return false;
+    }
+    return true;
+  }
+  function headOn(a,b){
+    for(const u of [a,b]){
+      if((u.laneCD||0)>0) continue;
+      for(const L of [0,1,2]) if(L!==u.lane&&laneFree(u,L)){ u.lane=L; u.laneCD=1.2; return; }
+    }
+    const u=(a.def.mass||1)<=(b.def.mass||1)?a:b;      // the lighter one gives way
+    if((u.turnCD||0)<=0){ u.facing=-u.facing; u.turnCD=2.5; }
+  }
   /* ---- separation, two rules ----
      ① DIFFERENT LANES WALK PAST EACH OTHER. The lanes stop being decoration and
         become sidewalk lanes — a sprinter goes around the big guy.
@@ -1766,6 +1849,9 @@ function step(dt){
             rear.lane=(rear.lane+1+((Math.random()*2)|0))%3;
             rear.laneCD=1.5;
           }
+        } else if(P.hidden && !a.isBoss && !b.isBoss &&
+                  (b.x-a.x)*a.facing>0 && (a.x-b.x)*b.facing>0){
+          headOn(a,b);                       // 🚦 v0.22: walking INTO each other at your door
         }
         const s=(d===0?(i%2?1:-1):(d>0?1:-1));
         const push=(minGap-ad)*relax;
@@ -1815,7 +1901,7 @@ function die(){
   dead=true;
   if(SIM) return;
   const m=Math.round(P.maxX/40);
-  if(m>best){best=m;localStorage.setItem("hexcap_best",m);}
+  if(m>best){best=m; try{ localStorage.setItem("hexcap_best",m); }catch(e){ glitch("save best",e); } }   // 🛟 v0.22: was unguarded → the death freeze
 
   /* 🔮 the harvest — depth dominates */
   const blk=blockIdx+1;
@@ -1848,7 +1934,8 @@ function die(){
                :`nothing is carved below block ${SIGIL_FREE_BLOCKS+2} — sigils come from DEPTH, only`}</div>
      ${newDeep?`<div style="color:#5ec27a;font-size:12px">⛏ new deepest — block ${blk}</div>`:""}
      ${nextGate?`<div style="color:#6f6b85;font-size:11px">next shelf unlocks at block ${nextGate.gate} — ${nextGate.name}</div>`:""}
-     ${jab}`;
+     ${jab}
+     ${lastGlitch?`<div style="margin-top:6px;color:#ff9f68;font-size:10px">⚠️ a glitch was caught (tell Talon): ${String(lastGlitch).slice(0,120).replace(/</g,"&lt;")}</div>`:""}`;
   document.getElementById("over").style.display="flex";
   hud();
 }
@@ -1883,6 +1970,8 @@ function hud(){
   const cc=document.getElementById("castCd");
   if(cc){ const cd=ARMS[P.sel].cd;
           cc.style.height=(cd>0?Math.max(0,Math.min(1,P.cd/cd))*100:0)+"%"; }
+  const ci=document.getElementById("castIcon");           // 🏷️ v0.22: CAST shows what's armed
+  if(ci&&ci.textContent!==ARMS[P.sel].icon) ci.textContent=ARMS[P.sel].icon;
   document.querySelectorAll(".arm[data-w]").forEach(el=>{
     const w=el.dataset.w;
     el.classList.toggle("sel",P.sel===w);
