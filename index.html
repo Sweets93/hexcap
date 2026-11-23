@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.22 — Jake</title>
+<title>HexCap v0.23 — Hotfix</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -48,8 +48,18 @@
   #banner{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;
     font-size:30px;font-weight:bold;letter-spacing:4px;color:#fff;
     text-shadow:0 0 18px #8b85ff,0 3px 0 #000;opacity:0;transition:opacity .25s}
+  /* 🚑 v0.23 HOTFIX — "there's no button to get out of the store." v0.22's bigger
+     text made The Door's menu taller than a landscape phone, and a panel that is
+     center-justified with no scrolling clips BOTH ends — the exit was off the
+     bottom. My nephew-tester got stuck at block 5. Now: panels scroll when they
+     don't fit (auto margins keep them centered when they do), and the exit is
+     pinned to the bottom edge so it can never be pushed off-screen again. */
   .panel{position:absolute;inset:0;background:rgba(8,9,15,.93);display:none;
-    flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px}
+    flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:14px;
+    overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .panel > :first-child{margin-top:auto}
+  .panel > :last-child{margin-bottom:auto}
+  #leave{position:sticky;bottom:0;z-index:3;box-shadow:0 -10px 18px rgba(8,9,15,.95)}
   .panel h2{margin:0 0 4px;font-size:25px;letter-spacing:2px}
   #over h2{color:#ff6b8b} #shop h2{color:#ffd166} #pz h2{color:#8b85ff}
   .res{font-size:13px;color:#b6b1cc;line-height:1.75;margin-bottom:10px} .res b{color:#fff;font-size:16px}
@@ -167,8 +177,12 @@
   /* 🔤 v0.22 — Jake: "wish the text was bigger." Phone menus read at arm's length now. */
   body.mobile .res{font-size:14px} body.mobile .res b{font-size:17px}
   body.mobile #vline{font-size:15px} body.mobile #vwarn{font-size:12px}
-  body.mobile .buy{min-width:150px;padding:11px 14px}
-  body.mobile .buy .t{font-size:17px} body.mobile .buy .d{font-size:13px}
+  /* v0.23: the four buys sit in ONE row on a sideways phone — a short menu, not a tall one */
+  body.mobile #buys{flex-wrap:nowrap;width:100%;max-width:820px;gap:8px;margin-bottom:10px}
+  body.mobile .buy{min-width:0;flex:1 1 0;padding:9px 10px}
+  body.mobile .buy .t{font-size:16px} body.mobile .buy .d{font-size:12px}
+  body.mobile #shop .res{margin-bottom:6px;line-height:1.5}
+  body.mobile #vline{margin-bottom:4px}
   body.mobile .buy button{font-size:15px;padding:9px} body.mobile .buy .row2 button{font-size:13px;padding:7px}
   body.mobile #sigHead{font-size:15px} body.mobile #sigHead b{font-size:18px}
   body.mobile .tierHd{font-size:13px}
@@ -259,7 +273,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.22 — JAKE</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.23 — HOTFIX</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
