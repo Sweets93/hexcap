@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.24 — Defense</title>
+<title>HexCap v0.25 — Bosses</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -273,7 +273,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.24 — DEFENSE</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.25 — BOSSES</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -543,6 +543,10 @@ const TUNE = {
      Talon's original number was 10. It was the right one. */
   bossFrom:10, bossEvery:10, bossHpMult:1, summonEvery:5.5, kiteNear:185,
   bossSwing:1.15, arenaWide:820, bossGrace:1.4, bossCard:2.4,
+  /* 🧟 v0.25 boss tricks — every number a slider */
+  bossGuard:0.25, bossWindowMult:1.5, breachStunMult:2,
+  squadGap:4.5, chargeEvery:5.2, chargeWind:1.25, chargeSpeed:520, chargeStun:3.2,
+  crackNeed:3, armorWindow:5,
   speed:190, castMove:0.45, hp:5
 };
 
@@ -615,21 +619,25 @@ const RANGED={
    instead of more horde.                        (Talon's design, 2026-11-11)
    ========================================================== */
 const BOSSES=[
+  /* 🧟 v0.25 — ONE TRICK PER BOSS (Talon's Mario instinct: you don't out-damage
+     Bowser, you figure out his trick). No new verbs — every trick is built from
+     hex, swat, runes and doors. SPAM STILL WORKS, JUST SLOWLY: outside his
+     window a boss takes TUNE.bossGuard (25%) damage, never zero. */
   {id:"sergeant",name:"THE SERGEANT",face:"🚔",col:"#4f7fb5",trait:"summon",
    hp:26,speed:38,dmg:2,w:46,h:66,mass:6,
-   tell:"He never comes alone. Put him down before the street fills up.",
-   card:"He brought friends. He always brings friends."},
+   tell:"He hides behind his squad. Drop his men and his guard drops.",
+   card:"He brought friends. Shoot the friends first."},
   /* dmg was 3 — against a fresh 5-heart wizard that is a TWO-HIT kill, which
      makes the first boss a coin flip rather than a skill check. His threat is
      the enrage, not a knockout punch. */
   {id:"breacher",name:"THE BREACHER",face:"🧱",col:"#8d6a4f",trait:"enrage",
    hp:40,speed:28,dmg:2,w:54,h:72,mass:9,
-   tell:"Half dead is when he gets fast. Buy embers.",
-   card:"Hit him until he's angry. Then hit him faster."},
+   tell:"When he roars, get in a door. Let the wall stop him.",
+   card:"He charges at the roar. Don't be standing in front of it."},
   {id:"marshal", name:"THE MARSHAL", face:"🎖️",col:"#7a5b8a",trait:"advance",
    hp:24,speed:32,dmg:2,w:46,h:64,mass:5, ranged:"bossrifle",
-   tell:"He shoots while he walks. Standing still is how you die.",
-   card:"He shoots while he walks. Use the doors, or don't. Your funeral."}
+   tell:"His rounds can go home. Swat one back at him.",
+   card:"Return what he sends. Three to crack the armor."}
 ];
 /* with bosses every 10: 10 & 20 plain · 30 & 40 VETERAN · 50+ DREAD */
 const RANKS=[
@@ -1455,8 +1463,13 @@ function startBoss(){
      barriers are on screen at once, so it reads as a cage instead of "a long
      street with a wall somewhere behind me". (Talon, 2026-11-11.) */
   const hi=b*len+len-18, lo=hi-TUNE.arenaWide;
-  const e=makeEnemy(def, Math.max(lo+30, P.x-230), 1);   // a beat of warning
+  /* 🧟 v0.25: he waits at the FAR end of the cage (Talon), not right behind you.
+     You walked in from the left and the cage closed ahead of you, so you're at
+     the right wall — he's across the whole arena. Room to read him. */
+  const e=makeEnemy(def, lo+60, 1);
   e.isBoss=true; e.lane=0;
+  e.phase=1; e.mode="walk"; e.modeT=0; e.chargeT=TUNE.chargeEvery*0.6;
+  e.cracks=0; e.vulnT=0; e.guardT=0;
   e.grace=TUNE.bossGrace;            // he arrives, THEN he starts working
   enemies.push(e);
   /* 🧹 "the horde goes quiet" was only half true — the spawner stopped but
@@ -1468,7 +1481,8 @@ function startBoss(){
     if(en.x>lo-140&&en.x<hi+140){ en.hp=-99; if(!SIM) puff(en.x,GROUND-30,"#6f6b85",5); }
   }
   arena.active=true; arena.lo=lo; arena.hi=hi; arena.boss=e;
-  arena.summonT=TUNE.summonEvery; arena.bossMax=e.hpMax;
+  arena.summonT=0.4; arena.bossMax=e.hpMax;              // 🚔 the first squad comes right away
+  arena.hadSquad=false; arena.windowSaid=false; arena.side=1;
   arena.cine=SIM?0:TUNE.bossCard;    // 🎬 time stops for the title card
   banner("");
   if(!SIM) shake=1;
@@ -1542,6 +1556,101 @@ function frame(now){
   }
 }
 
+/* 🧟 v0.25 — is the boss OPEN right now? Each one has exactly one way in. */
+function bossVuln(e){
+  if(!e||!e.isBoss||!arena.active) return true;
+  const t=e.def.trait;
+  if(t==="summon")  return !enemies.some(s=>s.summon&&s.hp>0);   // 🚔 squad down = guard down
+  if(t==="enrage")  return e.mode==="stun";                        // 🧱 crashed into the wall
+  if(t==="advance") return (e.vulnT||0)>0;                         // 🎖️ armor cracked open
+  return true;
+}
+function bossHint(e){
+  const t=e.def.trait;
+  return t==="summon"?"drop his squad":t==="enrage"?"wait for the charge":"swat his rounds back";
+}
+/* what the boss bar tells you — "you cannot make a decision you cannot see" */
+function bossStatus(e){
+  const t=e.def.trait, open=bossVuln(e);
+  if(t==="summon")  return open?"🎯 GUARD DOWN — HIT HIM!":"🛡️ SHIELDED — drop his squad";
+  if(t==="enrage"){
+    if(e.mode==="stun")   return "💫 STUNNED — HIT HIM!";
+    if(e.mode==="wind")   return "⚠️ HE'S ABOUT TO CHARGE — GET IN A DOOR";
+    if(e.mode==="charge") return "💨 CHARGING!";
+    return "🛡️ GUARDED — wait for the charge";
+  }
+  if(t==="advance") return open?"🎯 ARMOR BROKEN — HIT HIM!":`🛡️ ARMOR ${e.cracks||0}/${TUNE.crackNeed} — swat his rounds back`;
+  return "";
+}
+/* 🧱 THE BREACHER — THE CHARGE. Walk → ROAR (the telegraph) → charge the length
+   of the cage → SLAM into the far wall → stunned, double damage.
+   Talon's call: NOT the doorframe — that would stun him on top of you and box you
+   in. He passes your door and hits the FAR wall: room to turn and shoot his back,
+   and choosing a door closer to him is a real decision. Don't dodge and you take
+   the hit — but he still crashes, so a struggling player still gets the window.
+   Quickstep makes the dodge easier: the door upgrades feed this fight. */
+function breacherStep(e,dt){
+  const ph=e.phase||1;
+  const every=TUNE.chargeEvery*(ph>=3?0.6:ph>=2?0.8:1)/(e.def.rate||1);
+  const half=e.def.w*0.5;
+  if(e.grace>0) return;
+  if(e.mode==="walk"){
+    if(!P.hidden) e.facing=(P.x>e.x)?1:-1;
+    e.x+=e.facing*e.def.speed*(e.stun>0?0.3:1)*dt;
+    const dist=Math.abs(e.x-P.x);
+    if(!P.hidden&&dist<half+16&&e.hitCD<=0){                 // he still crushes you up close
+      e.hitCD=TUNE.bossSwing; P.hp-=(e.dmg||e.def.dmg); P.hurtT=0.45; shake=1;
+      P.entryT=0; P.entryDoor=null;
+      floats.push({x:P.x,y:GROUND-66,txt:"-"+(e.dmg||e.def.dmg),col:"#ff6b8b",t:0.8,vy:-34});
+      if(P.hp<=0) die();
+    }
+    e.chargeT-=dt;
+    if(e.chargeT<=0&&!P.hidden){
+      e.mode="wind"; e.modeT=TUNE.chargeWind; e.facing=(P.x>e.x)?1:-1;
+      if(!SIM){ shake=Math.min(1,shake+0.6);
+        floats.push({x:e.x,y:GROUND-e.def.h-30,txt:"ROAAAR!",col:"#ff6b8b",t:1.2,vy:-20,big:true}); }
+    }
+  } else if(e.mode==="wind"){
+    e.modeT-=dt;
+    if(e.modeT<=0){ e.mode="charge"; e.hitThis=false; }
+  } else if(e.mode==="charge"){
+    e.x+=e.facing*TUNE.chargeSpeed*dt;
+    if(!P.hidden&&!e.hitThis&&Math.abs(e.x-P.x)<half+14){   // caught in the open: it HURTS
+      e.hitThis=true; const dmg=(e.dmg||e.def.dmg)+1;
+      P.hp-=dmg; P.hurtT=0.6; shake=1; P.entryT=0; P.entryDoor=null;
+      floats.push({x:P.x,y:GROUND-66,txt:"-"+dmg,col:"#ff6b8b",t:0.9,vy:-34,big:true});
+      if(P.hp<=0) die();
+    }
+    const wall=e.facing>0?arena.hi-half:arena.lo+half;
+    if((e.facing>0&&e.x>=wall)||(e.facing<0&&e.x<=wall)){
+      e.x=wall; e.mode="stun"; e.modeT=TUNE.chargeStun; e.hitCD=TUNE.chargeStun;
+      if(!SIM){ shake=1; puff(e.x+e.facing*half,GROUND-40,"#cfd6df",16);
+        floats.push({x:e.x,y:GROUND-e.def.h-30,txt:"CRASH! — HIT HIM!",col:"#5ec27a",t:1.6,vy:-22,big:true}); }
+    }
+  } else if(e.mode==="stun"){
+    e.modeT-=dt;
+    if(e.modeT<=0){ e.mode="walk"; e.chargeT=every; e.facing=(P.x>e.x)?1:-1; }
+  }
+  e.x=Math.max(arena.lo+half,Math.min(arena.hi-half,e.x));   // a boss never leaves its cage
+}
+/* 🎖️ THE MARSHAL — RETURN TO SENDER. In his fight, a swatted rifle round flies
+   back home. Three cracks break his armor → a damage window. Pure skill, built
+   entirely from the hex you already have — and Ward (multi-swat) feeds it.
+   (Talon: "that's genius… super fun.") */
+function returnToSender(b){
+  const m=b&&b.owner;
+  if(!m||!m.isBoss||m.hp<=0||!arena.active||m.def.trait!=="advance") return;
+  zaps.push({x1:b.x,y1:b.y,x2:m.x,y2:GROUND-m.def.h*0.5,t:0.2});
+  if((m.vulnT||0)>0) return;                       // already open — just enjoy it
+  m.cracks=(m.cracks||0)+1; m.flash=0.2;
+  if(!SIM){ puff(m.x,GROUND-m.def.h*0.5,"#c08bff",8);
+    floats.push({x:m.x,y:GROUND-m.def.h-14,txt:"RETURN TO SENDER! "+m.cracks+"/"+TUNE.crackNeed,col:"#c08bff",t:1.1,vy:-26}); }
+  if(m.cracks>=TUNE.crackNeed){
+    m.cracks=0; m.vulnT=TUNE.armorWindow; m.stun=Math.max(m.stun,0.8);
+    if(!SIM){ shake=1; puff(m.x,GROUND-m.def.h*0.5,"#ffd166",18);
+      floats.push({x:m.x,y:GROUND-m.def.h-34,txt:"ARMOR BROKEN — HIT HIM!",col:"#5ec27a",t:1.6,vy:-22,big:true}); }
+  }
+}
 function hitEnemy(e,dmg,fromDir,isHex,src){
   /* fromDir = the direction the attack TRAVELS.
      The attack lands on the enemy's FRONT when the enemy is facing back
@@ -1561,6 +1670,15 @@ function hitEnemy(e,dmg,fromDir,isHex,src){
   if(e.def.shield && !facingAttacker && e.shieldHp>0){
     led.back++;
     floats.push({x:e.x,y:GROUND-e.def.h-14,txt:"BACK!",col:"#5ec27a",t:0.8,vy:-30});
+  }
+  /* 🧟 v0.25 — guarded bosses take a quarter; his window multiplies it. */
+  if(e.isBoss&&arena.active){
+    const open=bossVuln(e);
+    dmg*= open ? (e.def.trait==="enrage"?TUNE.breachStunMult:TUNE.bossWindowMult) : TUNE.bossGuard;
+    if(!open&&!SIM&&(e.guardT||0)<=0){
+      e.guardT=0.8;
+      floats.push({x:e.x,y:GROUND-e.def.h-12,txt:"🛡️ "+bossHint(e),col:"#9fd0ff",t:0.9,vy:-24});
+    }
   }
   e.hp-=dmg; e.flash=0.16;
   if(isHex){
@@ -1645,6 +1763,7 @@ function step(dt){
       if(tBullet){
         tBullet.t=-1; led.pop++;
         puff(endX,endY,"#9646dc",8);
+        returnToSender(tBullet);                         // 🎖️ v0.25
         /* 🛡️ v0.24 WARD — each level swats one MORE round in reach, nearest first.
            Without it, a Shotgunner's spread is a door-or-bleed problem (on purpose). */
         const extra=upg("ward");
@@ -1656,6 +1775,7 @@ function step(dt){
             b.t=-1; led.pop++;
             zaps.push({x1:P.x+P.face*15,y1:GROUND-52,x2:b.x,y2:b.y,t:0.1});
             puff(b.x,b.y,"#9646dc",6);
+            returnToSender(b);                           // 🎖️ v0.25: Ward feeds the Marshal fight
           }
         }
         floats.push({x:tBullet.x,y:endY-14,txt:more.length?"SWAT ×"+(1+more.length)+"!":"SWAT!",col:"#c08bff",t:0.6,vy:-30});
@@ -1733,19 +1853,58 @@ function step(dt){
     if(!b||b.hp<=0){
       arena.active=false; arena.boss=null;
       banner("THE WAY IS OPEN");
-    } else if(b.def.trait==="summon"){
-      arena.summonT-=dt;
-      if(arena.summonT<=0){
-        arena.summonT=TUNE.summonEvery/(b.def.rate||1);
-        const pool=[ENEMIES.thug,ENEMIES.runner,ENEMIES.mob];
-        for(let i=0;i<2;i++){
-          const d=pool[(Math.random()*pool.length)|0];
-          const left=Math.random()<0.5;
-          const s=makeEnemy(d, left?arena.lo-30-i*30:arena.hi+30+i*30, left?1:-1);
-          s.summon=true;                        // the ONLY things allowed through the cage walls
-          enemies.push(s);
+      /* 🧪 v0.25 — a reward you can use RIGHT NOW (Talon: the gold didn't help
+         until 5 blocks later). The fight takes your potions; it gives them back. */
+      const had=P.pots; P.pots=Math.max(P.pots,potCap());
+      if(!SIM&&P.pots>had) floats.push({x:P.x,y:GROUND-112,txt:"🧪 POTIONS REFILLED",col:"#ff6b8b",t:1.8,vy:-22,big:true});
+      if(!SIM) hud();
+    } else {
+      b.guardT=Math.max(0,(b.guardT||0)-dt);
+      if(b.vulnT>0){ b.vulnT-=dt;
+        if(b.vulnT<=0&&!SIM) floats.push({x:b.x,y:GROUND-b.def.h-26,txt:"ARMOR BACK UP",col:"#9fd0ff",t:1.1,vy:-24}); }
+      /* 📈 PHASES at ⅔ and ⅓ (Talon's idea) — the trick comes harder, not the numbers */
+      const ph=b.hp<=b.hpMax/3?3:(b.hp<=b.hpMax*2/3?2:1);
+      if(ph>(b.phase||1)){
+        b.phase=ph;
+        if(!SIM){ banner(b.def.face+"  PHASE "+ph); shake=1;
+          floats.push({x:b.x,y:GROUND-b.def.h-34,txt:ph===3?"LAST STAND":"HE'S ANGRY",col:"#ff6b8b",t:1.5,vy:-22,big:true}); }
+      }
+      /* 🚧 v0.25 — you can't walk THROUGH a boss (Talon did, at block 40). Doors
+         are how you get past one — which is exactly what gives the cage's doors a job. */
+      if(!P.hidden&&b.mode!=="charge"){
+        const gap=b.def.w*0.5+12, d=P.x-b.x;
+        if(Math.abs(d)<gap){ P.x=Math.max(arena.lo,Math.min(arena.hi,b.x+arena.side*gap)); }
+        else arena.side=d>0?1:-1;
+      }
+      /* 🚔 THE SERGEANT — LEADER'S WARD. Shielded while ANY of his squad stands.
+         Clear the squad and the guard drops until he calls the next one. The
+         spam has a job now: the squad first, then him. Squads grow 2 → 3 → 4,
+         and a Pistol Cop joins in the last phase. */
+      if(b.def.trait==="summon"){
+        const alive=enemies.some(s=>s.summon&&s.hp>0);
+        if(alive){ arena.summonT=TUNE.squadGap/(b.def.rate||1); arena.windowSaid=false; }
+        else {
+          if(arena.hadSquad&&!arena.windowSaid){
+            arena.windowSaid=true;
+            if(!SIM){ shake=Math.min(1,shake+0.5);
+              floats.push({x:b.x,y:GROUND-b.def.h-30,txt:"SHIELD DOWN!",col:"#5ec27a",t:1.4,vy:-24,big:true}); }
+          }
+          arena.summonT-=dt;
+          if(arena.summonT<=0){
+            const pool=[ENEMIES.thug,ENEMIES.runner,ENEMIES.mob];
+            if((b.phase||1)>=3) pool.push(ENEMIES.cop);
+            const n=1+(b.phase||1);
+            for(let i=0;i<n;i++){
+              const d=pool[(Math.random()*pool.length)|0];
+              const left=i%2===0;
+              const s=makeEnemy(d, left?arena.lo-30-i*24:arena.hi+30+i*24, left?1:-1);
+              s.summon=true;                        // the ONLY things allowed through the cage walls
+              enemies.push(s);
+            }
+            arena.hadSquad=true;
+            if(!SIM) floats.push({x:b.x,y:GROUND-b.def.h-30,txt:"ON ME!",col:"#9fd0ff",t:1.1,vy:-28});
+          }
         }
-        floats.push({x:b.x,y:GROUND-b.def.h-30,txt:"ON ME!",col:"#9fd0ff",t:1.1,vy:-28});
       }
     }
   }
@@ -1797,6 +1956,10 @@ function step(dt){
     if(e.grace>0){ e.grace-=dt; e.aim=0; e.hitCD=Math.max(e.hitCD,e.grace); }
     const slow=e.stun>0?0.3:1;
 
+    /* 🧱 v0.25: the Breacher runs his own charge loop — even while you're hidden,
+       because "get in a door and let him pass" IS the dodge. */
+    if(e.isBoss&&arena.active&&e.def.trait==="enrage"){ breacherStep(e,dt); continue; }
+
     if(P.hidden){
       e.aim=0;                                    // can't shoot what they can't see
       /* 🚶 v0.21 — they just KEEP WALKING. Same speed, same direction. The old
@@ -1840,9 +2003,12 @@ function step(dt){
         if(e.aim>0){
           e.aim-=dt;
           if(e.aim<=0){
-            for(let s=0;s<R.shots;s++)
+            /* 🎖️ v0.25: the Marshal fires more each phase (1 → 2 → 3) — more danger,
+               and more rounds to send home. Every round remembers who fired it. */
+            const shots=R.shots+((e.isBoss&&e.def.trait==="advance")?((e.phase||1)-1):0);
+            for(let s=0;s<shots;s++)
               ebolts.push({x:e.x+e.facing*16,y:GROUND-34-(s-1)*7,dir:e.facing,
-                           spd:R.spd*(1+(s-1)*0.06),dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3"});
+                           spd:R.spd*(1+(s-1)*0.06),dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
             e.reload=R.cool; shake=Math.min(1,shake+0.15);
             puff(e.x+e.facing*18,GROUND-34,"#ffd9a0",4);
           }
@@ -2355,7 +2521,7 @@ function draw(){
   /* 💀 BOSS BAR — top of screen, with the name and the rank */
   if(arena.active&&arena.boss&&arena.boss.hp>0){
     const b=arena.boss, frac=b.hp/(b.hpMax||1);
-    const W=Math.min(VW-60,560), X=(VW-W)/2, Y=14;
+    const W=Math.min(VW-60,560), X=(VW-W)/2, Y=MOBILE?46:14;     // v0.25: clear the phone HUD
     ctx.fillStyle="rgba(11,13,20,.82)"; ctx.fillRect(X-8,Y-12,W+16,30);
     ctx.fillStyle="#3a3f55"; ctx.fillRect(X,Y,W,9);
     ctx.fillStyle=frac>0.5?"#ff6b8b":"#ff3d63"; ctx.fillRect(X,Y,W*Math.max(0,frac),9);
@@ -2364,7 +2530,36 @@ function draw(){
       ctx.fillRect(X,Y-5,W*Math.max(0,b.shieldHp/(b.shieldMax||1)),4);
     }
     ctx.fillStyle="#fff"; ctx.font="bold 12px Verdana"; ctx.textAlign="center";
-    ctx.fillText(b.def.face+"  "+b.def.name,VW/2,Y+21);
+    ctx.fillText(b.def.face+"  "+b.def.name+((b.phase||1)>1?"  ·  PHASE "+b.phase:""),VW/2,Y+21);
+    /* 🧟 v0.25 — the bar SAYS what to do. "You cannot make a decision you cannot see." */
+    const open=bossVuln(b), st=bossStatus(b);
+    ctx.font="bold 11px Verdana";
+    ctx.fillStyle="rgba(11,13,20,.82)"; ctx.fillRect(X-8,Y+18+8,W+16,18);
+    ctx.fillStyle=open?"#5ec27a":(b.mode==="wind"?"#ff6b8b":"#9fd0ff");
+    ctx.fillText(st,VW/2,Y+39);
+    /* …and the boss WEARS it: a shield bubble when guarded, stars when stunned,
+       a red flash while he winds up the charge */
+    const bx=b.x-cam, by=GROUND-b.def.h*0.5;
+    ctx.save();
+    if(!open&&b.def.trait!=="enrage"){
+      ctx.globalAlpha=0.35+0.15*Math.sin(performance.now()/180);
+      ctx.strokeStyle="#9fd0ff"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.ellipse(bx,by,b.def.w*0.85,b.def.h*0.7,0,0,Math.PI*2); ctx.stroke();
+      if(b.def.trait==="advance"){                               // armor cracks so far
+        ctx.globalAlpha=1; ctx.fillStyle="#c08bff"; ctx.font="bold 13px Verdana";
+        ctx.fillText("◆".repeat(b.cracks||0)+"◇".repeat(Math.max(0,TUNE.crackNeed-(b.cracks||0))),bx,GROUND-b.def.h-12);
+      }
+    }
+    if(b.mode==="wind"){
+      ctx.globalAlpha=0.5+0.5*Math.sin(performance.now()/60);
+      ctx.fillStyle="#ff6b8b"; ctx.font="bold 22px Verdana"; ctx.fillText("‼",bx,GROUND-b.def.h-14);
+    }
+    if(b.mode==="stun"||((b.vulnT||0)>0)){
+      ctx.globalAlpha=1; ctx.font="16px Verdana";
+      const t=performance.now()/240;
+      for(let i=0;i<3;i++) ctx.fillText("✦",bx+Math.cos(t+i*2.1)*22,GROUND-b.def.h-10+Math.sin(t+i*2.1)*6);
+    }
+    ctx.restore();
   }
   /* 🎬 THE ENTRANCE CARD — the only narrator this game has, being himself */
   if(arena.cine>0&&arena.boss){
