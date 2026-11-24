@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.23 — Hotfix</title>
+<title>HexCap v0.24 — Defense</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -273,7 +273,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.23 — HOTFIX</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.24 — DEFENSE</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -725,6 +725,17 @@ const SIGILS=[
    now:lv=>`${(TUNE.runeDrop+2.5*lv).toFixed(1)}% → ${(TUNE.runeDrop+2.5*(lv+1)).toFixed(1)}%`},
   {id:"scavenger",tier:0,icon:"🪙",name:"Scavenger", max:2,cost:[5,11],
    step:"+15% coin from kills", now:lv=>`+${15*lv}% → +${15*(lv+1)}%`},
+  /* 🛡️ v0.24 DEFENSE — the law "every stat the ENEMY scales on needs a matching
+     axis the PLAYER can scale on" was broken: enemy damage climbed, your defense
+     didn't, and bullets killed every late run. These are PAIN-POINT upgrades
+     (Talon): slow doors and slow potions don't feel bad, they could feel better —
+     and you earn the better. Quickstep + Deep Draught are in Tier I and cheap on
+     purpose: they're what a struggling new player (Jake) needs first. */
+  {id:"quickstep",tier:0,icon:"🚪",name:"Quickstep", max:2,cost:[4,9],
+   step:"get through a door 25% faster",
+   now:lv=>`${(TUNE.entry*(1-0.25*lv)).toFixed(2)}s → ${(TUNE.entry*(1-0.25*(lv+1))).toFixed(2)}s`},
+  {id:"draught", tier:0,icon:"❤️",name:"Deep Draught",max:2,cost:[5,12],
+   step:"each potion heals +1 more heart", now:lv=>`${1+lv} → ${2+lv} per potion`},
 
   {id:"longhex", tier:1,icon:"✦",name:"Long Hex",    max:2,cost:[14,30],
    step:"+25px hex reach — the big one",
@@ -735,6 +746,14 @@ const SIGILS=[
    step:"embers punch through one extra body"},
   {id:"deeplance",tier:1,icon:"⚡",name:"Deep Lance",max:2,cost:[16,34],
    step:"+2 lance pierce",      now:lv=>`${lancePierce()} → ${lancePierce()+2} bodies`},
+  /* 🛡️ v0.24 — WARD: the Shotgunner stays scary (Talon: "you don't get to swat all
+     of them… you've got to get in a door, or eventually upgrade"). Each level, one
+     hex swats one MORE round. It also feeds the Marshal's "return to sender." */
+  {id:"ward",    tier:1,icon:"🛡️",name:"Ward",       max:3,cost:[15,32,60],
+   step:"one hex swats +1 more bullet", now:lv=>`${1+lv} → ${2+lv} per hex`},
+  {id:"quaff",   tier:1,icon:"🧪",name:"Quick Draught",max:2,cost:[12,26],
+   step:"drink a potion 30% faster",
+   now:lv=>`${(TUNE.potTime*(1-0.3*lv)).toFixed(2)}s → ${(TUNE.potTime*(1-0.3*(lv+1))).toFixed(2)}s`},
 
   /* "what's in the box" alone is a weak 55 once Nimble makes opening cheap —
      so it now answers a question Nimble CAN'T: which doors are locked. */
@@ -743,8 +762,13 @@ const SIGILS=[
   /* ⛔ PATRONAGE CUT: it shifted vendEvery by one, which actively un-did the
      vendor/boss alignment. An upgrade that breaks the game's rhythm is not an
      upgrade. (Talon: "I don't really like that one.") */
-  {id:"steady",  tier:2,icon:"🩹",name:"Steady Hands",max:1,cost:[70],
+  /* v0.24: the potion LADDER — faster drinking (Quick Draught) → no drinking at all. */
+  {id:"steady",  tier:2,icon:"🩹",name:"Steady Hands",max:1,cost:[70], req:{id:"quaff",lv:2},
    step:"drinking a potion no longer roots you"},
+  /* 👻 v0.24 — the door LADDER's top rung. Locked behind a maxed Quickstep
+     (Talon's call): instant doors are EARNED, never handed out. */
+  {id:"threshold",tier:2,icon:"👻",name:"Threshold",max:1,cost:[120], req:{id:"quickstep",lv:2},
+   step:"slip through a door INSTANTLY"},
   {id:"secondwind",tier:2,icon:"⏳",name:"Second Wind",max:1,cost:[260],
    step:"once per run the blow that should kill you doesn't — you come back on 2 hearts and everything near you reels"},
 
@@ -828,7 +852,16 @@ function pickSecs(){ return TUNE.pickTime * Math.max(0.2,1-0.35*upg("nimble")); 
 function coinMult(){ return TUNE.coinMult * (1+0.15*upg("scavenger")); }
 function vendEvery(){return Math.max(1,TUNE.vendEvery); }
 function runeDropPct(){ return TUNE.runeDrop + 2.5*upg("salvage"); }
-function potSecs(){ return upg("steady")?0:TUNE.potTime; }
+/* 🛡️ v0.24 defense hooks — one function per pain point, so every caller agrees */
+function potSecs(){ return upg("steady")?0:TUNE.potTime*Math.max(0,1-0.3*upg("quaff")); }
+function potHeal(){ return 1+upg("draught"); }
+function entrySecs(){ return upg("threshold")?0:TUNE.entry*Math.max(0,1-0.25*upg("quickstep")); }
+/* 🔗 prerequisites: a sigil with req:{id,lv} can't be carved until that one is at lv */
+function sigReqMet(s,up){ return !s.req || ((up[s.req.id]|0)>=s.req.lv); }
+function sigReqName(s){
+  const r=SIGILS.find(x=>x.id===s.req.id);
+  return (r?r.name:s.req.id)+" "+["","I","II","III","IV"][s.req.lv];
+}
 function emberHits(){return 1 + upg("twin"); }
 /* ⚡ the Lance used to pierce EVERYTHING for 11 coin. Now it's a number — and
    a number is something a Sigil can grow. (Talon's call, 2026-11-10.) */
@@ -1226,8 +1259,9 @@ function usePoultice(){
   if(P.pots<=0||P.hp>=maxHP()||P.potT>0) return;
   P.pots--;
   if(potSecs()<=0){                        // 🩹 Steady Hands — no root at all
-    P.hp=Math.min(maxHP(),P.hp+1);
-    floats.push({x:P.x,y:GROUND-84,txt:"❤️ +1",col:"#ff6b8b",t:1.1,vy:-28,big:true});
+    const h=potHeal();                     // ❤️ v0.24: Deep Draught
+    P.hp=Math.min(maxHP(),P.hp+h);
+    floats.push({x:P.x,y:GROUND-84,txt:"❤️ +"+h,col:"#ff6b8b",t:1.1,vy:-28,big:true});
     puff(P.x,GROUND-44,"#ff6b8b",8); hud(); return;
   }
   P.potT=potSecs(); hud();
@@ -1263,7 +1297,8 @@ function doorAction(){
   /* v0.21: 🚪 Dowsing already SHOWS the lock, so skip the "try the handle" step
      and start picking straight away. Knowing should save you time. */
   if((d.known||upg("dowsing"))&&d.locked){ d.known=true; P.pickDoor=d; P.pickP=0.0001; return; }
-  P.entryT=TUNE.entry; P.entryDoor=d;
+  P.entryT=entrySecs(); P.entryDoor=d;                       // 🚪 v0.24: Quickstep / Threshold
+  if(P.entryT<=0){ P.entryT=0; finishEntry(); }               // 👻 instant
 }
 function finishEntry(){
   const d=P.entryDoor; P.entryDoor=null; P.entryT=0; if(!d) return;
@@ -1546,8 +1581,9 @@ function step(dt){
   if(P.potT>0){
     P.potT-=dt;
     if(P.potT<=0){
-      P.hp=Math.min(maxHP(),P.hp+1);
-      floats.push({x:P.x,y:GROUND-84,txt:"❤️ +1",col:"#ff6b8b",t:1.1,vy:-28,big:true});
+      const h=potHeal();                                       // ❤️ v0.24: Deep Draught
+      P.hp=Math.min(maxHP(),P.hp+h);
+      floats.push({x:P.x,y:GROUND-84,txt:"❤️ +"+h,col:"#ff6b8b",t:1.1,vy:-28,big:true});
       puff(P.x,GROUND-44,"#ff6b8b",8);
     }
   }
@@ -1609,7 +1645,20 @@ function step(dt){
       if(tBullet){
         tBullet.t=-1; led.pop++;
         puff(endX,endY,"#9646dc",8);
-        floats.push({x:tBullet.x,y:endY-14,txt:"SWAT!",col:"#c08bff",t:0.6,vy:-30});
+        /* 🛡️ v0.24 WARD — each level swats one MORE round in reach, nearest first.
+           Without it, a Shotgunner's spread is a door-or-bleed problem (on purpose). */
+        const extra=upg("ward");
+        let more=[];
+        if(extra>0){
+          more=ebolts.filter(b=>b!==tBullet&&b.t>0&&(b.x-P.x)*P.face>0&&(b.x-P.x)*P.face<=R)
+                     .sort((a,b)=>Math.abs(a.x-P.x)-Math.abs(b.x-P.x)).slice(0,extra);
+          for(const b of more){
+            b.t=-1; led.pop++;
+            zaps.push({x1:P.x+P.face*15,y1:GROUND-52,x2:b.x,y2:b.y,t:0.1});
+            puff(b.x,b.y,"#9646dc",6);
+          }
+        }
+        floats.push({x:tBullet.x,y:endY-14,txt:more.length?"SWAT ×"+(1+more.length)+"!":"SWAT!",col:"#c08bff",t:0.6,vy:-30});
       } else if(tgt){
         puff(endX,endY,"#7a30bd",4);
         /* ✦ HEX CHAIN — arc to the next body behind the first */
@@ -2296,7 +2345,7 @@ function draw(){
   }
 
   if(P.potT>0) ring(ppx,1-P.potT/Math.max(0.01,potSecs()),"#ff6b8b","drinking…");
-  if(P.entryT>0) ring(ppx,1-P.entryT/TUNE.entry,"#ffd166","trying the door…");
+  if(P.entryT>0) ring(ppx,1-P.entryT/Math.max(0.01,entrySecs()),"#ffd166","trying the door…");
   if(P.pickP>0){
     ring(ppx,P.pickP,P.pickFlash>0?"#ff6b8b":"#5ec27a","picking the lock…");
     void 0;
@@ -2432,6 +2481,12 @@ const POLICIES=[
 /* Sinks go LAST for every bot, so the capstones actually get bought and we can
    see what they do. (For a human the sink-vs-capstone choice is the whole point;
    a greedy bot can't model that tension, so don't pretend it does.) */
+/* 🛡️ v0.24: every bot also buys the defense line (in ladder order), so the
+   Reachability Audit sees Quickstep → Threshold and Quick Draught → Steady Hands. */
+for(const p of POLICIES){
+  const def=["quickstep","draught","ward","quaff","threshold"];
+  p.order=p.order.filter(id=>!def.includes(id)).concat(def);
+}
 for(const p of POLICIES) p.order=p.order.concat(["kindling","conduction","deephex","deepcoffer"]);
 
 /* the bot's between-run shopping trip: greedy down its own priority list,
@@ -2444,6 +2499,7 @@ function spendSigils(pol){
       const s=SIGILS.find(x=>x.id===id); if(!s) continue;
       const lv=SIMM.up[id]|0; if(sigMaxed(s,lv)) continue;
       if(SIMM.deepest<TIERS[s.tier].gate) continue;      // gate not reached
+      if(!sigReqMet(s,SIMM.up)) continue;                 // 🔗 v0.24 prerequisite not met
       const price=sigPrice(s,lv);
       if(SIMM.sigils<price) continue;
       SIMM.sigils-=price; SIMM.up[id]=lv+1; bought=true;
@@ -2812,13 +2868,15 @@ function renderSig(){
     const items=SIGILS.filter(s=>s.tier===ti).map(s=>{
       const lv=META.up[s.id]|0, maxed=sigMaxed(s,lv), inf=s.max===0;
       const price=maxed?0:sigPrice(s,lv);
-      const afford=open&&!maxed&&META.sigils>=price;
+      const reqOk=sigReqMet(s,META.up);                     // 🔗 v0.24 prerequisites
+      const afford=open&&reqOk&&!maxed&&META.sigils>=price;
       return `<div class="sig ${!open?'locked':''} ${maxed?'maxed':''}">
         <div class="st"><span>${s.icon} ${open?s.name:"? ? ?"}</span>
           <span class="lv">${inf?("♾️ LV "+lv):(maxed?"MAX":lv+"/"+s.max)}</span></div>
-        <div class="sd">${open?(s.step+(s.now?` <span style="color:#c08bff">(${s.now(lv)})</span>`:"")):"locked"}</div>
+        <div class="sd">${open?(s.step+(s.now?` <span style="color:#c08bff">(${s.now(lv)})</span>`:"")
+          +(s.req&&!maxed?` <span style="color:${reqOk?'#5ec27a':'#ff9f68'}">· needs ${sigReqName(s)}</span>`:"")):"locked"}</div>
         <button data-sig="${s.id}" ${afford?"":"disabled"}>
-          ${maxed?"COMPLETE":(open?"CARVE — 🔮"+price:"REACH BLOCK "+t.gate)}</button></div>`;
+          ${maxed?"COMPLETE":(!open?"REACH BLOCK "+t.gate:(!reqOk?"NEEDS "+sigReqName(s).toUpperCase():"CARVE — 🔮"+price))}</button></div>`;
     }).join("");
     return `<div class="tier ${open?'':'locked'}">
       <div class="tierHd">${open?"◆":"🔒"} TIER ${ti+1} — ${t.name}
@@ -2830,6 +2888,7 @@ function renderSig(){
     b.onclick=()=>{
       const s=SIGILS.find(x=>x.id===b.dataset.sig);
       const lv=META.up[s.id]|0; if(sigMaxed(s,lv)) return;
+      if(!sigReqMet(s,META.up)) return;
       const price=sigPrice(s,lv); if(META.sigils<price) return;
       META.sigils-=price; META.up[s.id]=lv+1; metaSave();
       renderSig(); hud();
