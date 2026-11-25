@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.27 — Tuning</title>
+<title>HexCap v0.28 — Sound</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -106,6 +106,8 @@
   body.mobile #hud .stat b{font-size:12px}
   body.mobile #hud .hearts{font-size:12px}
   body.mobile #sigBtn,body.mobile #pauseBtn{padding:6px 12px;font-size:11px}
+  #sndBtn{background:#1b2031;color:#cfcbe4;border:1px solid #2f3550;border-radius:7px;padding:5px 9px;font-size:12px}
+  body.mobile #sndBtn{padding:5px 9px;font-size:13px}
   /* 📐 v0.20 REACH — keep everything out of the iPhone's rounded corners and notch.
      (viewport-fit=cover lets the game paint edge-to-edge; these insets keep the
      HUD and thumbs where you can actually see and reach them.) "DOWNTOWN" was
@@ -301,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.27 — TUNING</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.28 — SOUND</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -319,6 +321,7 @@
       <button id="fsBtn">⛶ FULL</button>
       <button id="sigBtn" style="background:#2a2142;color:#c08bff;border:1px solid #5a3f8a;
         border-radius:7px;padding:5px 12px;font-size:11px;font-weight:bold;letter-spacing:1px">🔮 SIGILS</button>
+      <button id="sndBtn" title="sound on/off">🔊</button>
       <button id="pauseBtn">⏸ PAUSE</button>
     </div>
   </div>
@@ -1322,6 +1325,7 @@ applyCtrl();   // (fullscreen-on-tap still fires: the zone lives inside #stage, 
 document.getElementById("again").addEventListener("click",reset);
 document.getElementById("leave").addEventListener("click",closeShop);
 document.getElementById("pauseBtn").addEventListener("click",togglePause);
+document.getElementById("sndBtn").addEventListener("click",()=>{ audioUnlock(); setSound(!SND.on); if(SND.on) sfx("buy"); });
 document.getElementById("resume").addEventListener("click",togglePause);
 document.querySelectorAll(".arm[data-w]").forEach(el=>{
   el.addEventListener("pointerdown",e=>{e.preventDefault();select(el.dataset.w);});
@@ -1334,11 +1338,11 @@ function usePoultice(){
   // usable INSIDE a doorway on purpose: safe-but-earning-nothing is
   // exactly when you should be drinking.
   if(P.pots<=0||P.hp>=maxHP()||P.potT>0) return;
-  P.pots--;
+  P.pots--; sfx("drink");
   if(potSecs()<=0){                        // 🩹 Steady Hands — no root at all
     const h=potHeal();                     // ❤️ v0.24: Deep Draught
     P.hp=Math.min(maxHP(),P.hp+h);
-    floats.push({x:P.x,y:GROUND-84,txt:"❤️ +"+h,col:"#ff6b8b",t:1.1,vy:-28,big:true});
+    floats.push({x:P.x,y:GROUND-84,txt:"❤️ +"+h,col:"#ff6b8b",t:1.1,vy:-28,big:true}); sfx("heal");
     puff(P.x,GROUND-44,"#ff6b8b",8); hud(); return;
   }
   P.potT=potSecs(); hud();
@@ -1367,7 +1371,7 @@ function cycle(d){
 function doorAction(){
   if(dead||paused||shopOpen||P.doorCD>0) return;
   if(P.doomT>0) return;                            // 💀 v0.26: a charging Doom has you rooted
-  if(P.hidden){ P.hidden=false;P.door=null;P.doorCD=0.25;
+  if(P.hidden){ sfx("doorOut"); P.hidden=false;P.door=null;P.doorCD=0.25;
     for(const e of enemies) e.idle=0; puff(P.x,GROUND-20,"#8b85ff",7); return; }
   if(P.pickP>0){ P.pickP=0;P.pickDoor=null; return; }
   if(P.entryT>0){ P.entryT=0;P.entryDoor=null; return; }
@@ -1383,13 +1387,14 @@ function finishEntry(){
   const d=P.entryDoor; P.entryDoor=null; P.entryT=0; if(!d) return;
   d.known=true;
   if(d.locked){
-    floats.push({x:P.x,y:GROUND-66,txt:"LOCKED!",col:"#ff6b8b",t:1.0,vy:-26});
+    floats.push({x:P.x,y:GROUND-66,txt:"LOCKED!",col:"#ff6b8b",t:1.0,vy:-26}); sfx("locked");
     floats.push({x:P.x,y:GROUND-86,txt:"press again to pick it",col:"#8e89a8",t:1.6,vy:-14});
     puff(d.x,GROUND-40,"#6f6b85",5); P.doorCD=0.2; return;
   }
   enterDoor(d,1);
 }
 function enterDoor(d,lootMult){
+  sfx("doorIn");
   P.hidden=true;P.door=d;P.doorCD=0.25;
   puff(P.x,GROUND-20,"#2d6cff",7);
   if(!d.looted){ const was=d; d.looted=true; rollStash(lootMult,was); }
@@ -1400,7 +1405,7 @@ function hasStash(d,mult){
 function rollStash(mult,d){
   mult=mult||1;
   if(d&&!(d.roll*100<Math.min(100,TUNE.stash*mult))) return;
-  led.stash++;
+  led.stash++; sfx("stash");
   const r=Math.random()/mult; let txt,col;
   if(r<0.42){ const c=Math.round((3+Math.random()*10)*mult); P.coin+=c; led.earn+=c; txt="🪙 +"+c; col="#ffd166"; }
   else if(r<0.82||(r<0.95&&!runeUnlocked("lance"))){ const n=Math.max(1,Math.round((1+Math.random()*2)*mult));
@@ -1475,7 +1480,7 @@ function renderShop(){
         if(def.k==="mend"){ if(P.hp>=maxHP()) break; P.hp++; }
         else if(def.k==="pot"){ if(P.pots>=potCap()) break; P.pots++; }
         else P.runes[def.k]=(P.runes[def.k]||0)+1;
-        P.coin-=price; led.spend+=price;
+        P.coin-=price; led.spend+=price; sfx("buy");
       }
       renderShop(); hud();   // never changes P.sel
     };
@@ -1557,6 +1562,7 @@ function startBoss(){
   arena.summonT=0.4; arena.bossMax=e.hpMax;              // 🚔 the first squad comes right away
   arena.hadSquad=false; arena.windowSaid=false; arena.side=1;
   arena.cine=SIM?0:TUNE.bossCard;    // 🎬 time stops for the title card
+  sfx("bossIn");
   banner("");
   if(!SIM) shake=1;
 }
@@ -1598,6 +1604,106 @@ let last=performance.now();
    app. Now the next frame is booked FIRST, every error is caught, and if you're
    dead the game-over panel is guaranteed to show. The caught message prints on
    that panel so a tester can tell us what happened. */
+/* ==========================================================
+   🔊 v0.28 SOUND — retro arcade, every effect SYNTHESIZED (no audio files).
+   Each recipe takes (audioCtx, output, time, opts) so the same recipe can play
+   live or render offline in a test. Every sound has a minimum gap, because the
+   hex fires HUNDREDS of times a run (Design Seed: "test its sound alone, first").
+   Nothing plays during Bot Lab runs (SIM). Phones only allow audio after a tap,
+   so the engine wakes on the first touch/key. ⚠️ iPhone: the ringer/silent
+   switch mutes web audio — flip it to ring to hear the game.
+   ========================================================== */
+const SND={on:true,ctx:null,master:null,last:{}};
+try{ const v=localStorage.getItem("hexcap_sound"); if(v!==null) SND.on=(v==="1"); }catch(_){}
+function audioUnlock(){
+  if(SND.ctx){ if(SND.ctx.state==="suspended") SND.ctx.resume(); return; }
+  const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+  try{ SND.ctx=new AC(); SND.master=SND.ctx.createGain(); SND.master.gain.value=0.55;
+       SND.master.connect(SND.ctx.destination); }catch(_){}
+}
+["pointerdown","keydown","touchend"].forEach(ev=>addEventListener(ev,audioUnlock,{passive:true}));
+function setSound(on){
+  SND.on=!!on; try{ localStorage.setItem("hexcap_sound",SND.on?"1":"0"); }catch(_){}
+  const b=document.getElementById("sndBtn"); if(b) b.textContent=SND.on?"🔊":"🔇";
+}
+/* --- two primitives: a tone and a filtered noise burst --- */
+function tn(ac,out,t,o){
+  const f=o.f||440,d=o.d||0.1,v=o.v||0.2,a=o.a||0.005;
+  const osc=ac.createOscillator(), g=ac.createGain();
+  osc.type=o.type||"square"; osc.frequency.setValueAtTime(f,t);
+  if(o.f2) osc.frequency.exponentialRampToValueAtTime(Math.max(20,o.f2),t+d);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v,t+a);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  osc.connect(g); g.connect(out); osc.start(t); osc.stop(t+d+0.03);
+}
+let NOISE=null;
+function noiseBuf(ac){
+  if(NOISE&&NOISE.sampleRate===ac.sampleRate) return NOISE;
+  const b=ac.createBuffer(1,ac.sampleRate,ac.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  return (NOISE=b);
+}
+function nz(ac,out,t,o){
+  const d=o.d||0.15,v=o.v||0.2;
+  const s=ac.createBufferSource(); s.buffer=noiseBuf(ac);
+  const fl=ac.createBiquadFilter(); fl.type=o.type||"lowpass";
+  fl.frequency.setValueAtTime(o.f||2000,t);
+  if(o.f2) fl.frequency.exponentialRampToValueAtTime(Math.max(30,o.f2),t+d);
+  fl.Q.value=o.q||0.8;
+  const g=ac.createGain(); g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  s.connect(fl); fl.connect(g); g.connect(out); s.start(t); s.stop(t+d+0.03);
+}
+const arp=(ac,o,t,notes,step,opt)=>notes.forEach((f,i)=>tn(ac,o,t+i*step,Object.assign({f},opt)));
+/* --- the recipes. gap = minimum seconds between two of the same sound --- */
+const SFX={
+  hex:       {gap:.05, fn:(a,o,t)=>tn(a,o,t,{f:740,f2:420,d:.07,type:"square",v:.05})},
+  swat:      {gap:.04, fn:(a,o,t)=>{tn(a,o,t,{f:900,f2:1500,d:.06,type:"triangle",v:.12}); nz(a,o,t,{d:.05,v:.06,type:"highpass",f:3000});}},
+  ember:     {gap:.05, fn:(a,o,t)=>nz(a,o,t,{d:.14,v:.14,type:"bandpass",f:900,f2:2400,q:1.2})},
+  boom:      {gap:.06, fn:(a,o,t,x)=>{const big=x&&x.big; nz(a,o,t,{d:big?.5:.32,v:big?.42:.3,type:"lowpass",f:1400,f2:120});
+                                      tn(a,o,t,{f:140,f2:45,d:big?.42:.25,type:"square",v:.14});}},
+  lance:     {gap:.05, fn:(a,o,t)=>{tn(a,o,t,{f:1900,f2:260,d:.16,type:"sawtooth",v:.1}); nz(a,o,t,{d:.12,v:.1,type:"highpass",f:2500});}},
+  doomCharge:{gap:.2,  fn:(a,o,t)=>{const w=TUNE.doomWind; tn(a,o,t,{f:110,f2:440,d:w,type:"sawtooth",v:.08,a:.05});
+                                      tn(a,o,t,{f:55,f2:220,d:w,type:"square",v:.05,a:.05});}},
+  doom:      {gap:.1,  fn:(a,o,t)=>{tn(a,o,t,{f:90,f2:38,d:.5,type:"square",v:.22}); nz(a,o,t,{d:.45,v:.2,type:"lowpass",f:900,f2:80});}},
+  kill:      {gap:.03, fn:(a,o,t)=>tn(a,o,t,{f:520,f2:980,d:.07,type:"triangle",v:.1})},
+  hurt:      {gap:.12, fn:(a,o,t)=>{tn(a,o,t,{f:240,f2:90,d:.2,type:"square",v:.18}); nz(a,o,t,{d:.12,v:.12,type:"lowpass",f:1200});}},
+  doorIn:    {gap:.1,  fn:(a,o,t)=>tn(a,o,t,{f:280,f2:560,d:.16,type:"triangle",v:.12})},
+  doorOut:   {gap:.1,  fn:(a,o,t)=>tn(a,o,t,{f:560,f2:280,d:.14,type:"triangle",v:.1})},
+  locked:    {gap:.2,  fn:(a,o,t)=>{tn(a,o,t,{f:160,d:.06,type:"square",v:.12}); tn(a,o,t+.08,{f:140,d:.08,type:"square",v:.12});}},
+  unlock:    {gap:.2,  fn:(a,o,t)=>{tn(a,o,t,{f:1200,d:.03,type:"square",v:.1}); tn(a,o,t+.05,{f:1600,d:.05,type:"square",v:.1});}},
+  stash:     {gap:.2,  fn:(a,o,t)=>arp(a,o,t,[523,659,784,1047],.06,{d:.09,type:"square",v:.07})},
+  drink:     {gap:.2,  fn:(a,o,t)=>{for(let i=0;i<3;i++) tn(a,o,t+i*.09,{f:300+i*60,f2:420+i*60,d:.08,type:"sine",v:.12});}},
+  heal:      {gap:.2,  fn:(a,o,t)=>arp(a,o,t,[659,880,1175],.07,{d:.12,type:"triangle",v:.1})},
+  buy:       {gap:.05, fn:(a,o,t)=>{tn(a,o,t,{f:988,d:.05,type:"square",v:.06}); tn(a,o,t+.05,{f:1319,d:.09,type:"square",v:.06});}},
+  eshot:     {gap:.05, fn:(a,o,t,x)=>nz(a,o,t,{d:.07,v:.12*((x&&x.vol)||1),type:"highpass",f:1500})},
+  aim:       {gap:.15, fn:(a,o,t,x)=>tn(a,o,t,{f:2200,d:.04,type:"sine",v:.06*((x&&x.vol)||1)})},
+  roar:      {gap:.5,  fn:(a,o,t)=>{nz(a,o,t,{d:.9,v:.32,type:"lowpass",f:600,f2:200,q:2}); tn(a,o,t,{f:110,f2:70,d:.9,type:"sawtooth",v:.12,a:.08});}},
+  crash:     {gap:.3,  fn:(a,o,t)=>{nz(a,o,t,{d:.6,v:.45,type:"lowpass",f:1800,f2:60}); tn(a,o,t,{f:90,f2:30,d:.5,type:"square",v:.2});}},
+  shieldDown:{gap:.3,  fn:(a,o,t)=>arp(a,o,t,[880,660,440],.07,{d:.1,type:"square",v:.08})},
+  crack:     {gap:.1,  fn:(a,o,t)=>{tn(a,o,t,{f:1500,f2:600,d:.12,type:"triangle",v:.12}); nz(a,o,t,{d:.1,v:.1,type:"highpass",f:4000});}},
+  armorBreak:{gap:.3,  fn:(a,o,t)=>{nz(a,o,t,{d:.35,v:.3,type:"highpass",f:2500,f2:800}); arp(a,o,t,[784,1047,1319],.05,{d:.15,type:"square",v:.07});}},
+  phase:     {gap:.5,  fn:(a,o,t)=>{tn(a,o,t,{f:220,d:.2,type:"sawtooth",v:.12}); tn(a,o,t+.18,{f:207,d:.3,type:"sawtooth",v:.12});}},
+  bossIn:    {gap:1,   fn:(a,o,t)=>{tn(a,o,t,{f:55,d:1.2,type:"sawtooth",v:.14,a:.1}); nz(a,o,t,{d:1,v:.2,type:"lowpass",f:300});}},
+  bossDown:  {gap:1,   fn:(a,o,t)=>arp(a,o,t,[523,659,784,1047,1319],.08,{d:.16,type:"square",v:.08})},
+  fanfare:   {gap:1,   fn:(a,o,t)=>arp(a,o,t,[392,523,659,784,1047],.09,{d:.2,type:"triangle",v:.1})},
+  wind:      {gap:1,   fn:(a,o,t)=>{nz(a,o,t,{d:.7,v:.3,type:"bandpass",f:300,f2:3000,q:1}); tn(a,o,t,{f:200,f2:900,d:.6,type:"triangle",v:.12});}},
+  death:     {gap:1,   fn:(a,o,t)=>tn(a,o,t,{f:440,f2:55,d:.9,type:"square",v:.16})}
+};
+function sfx(name,x){
+  if(SIM||!SND.on||!SND.ctx||SND.ctx.state!=="running") return;
+  const s=SFX[name]; if(!s) return;
+  const now=SND.ctx.currentTime;
+  if(now-(SND.last[name]===undefined?-9:SND.last[name])<(s.gap||0)) return;
+  SND.last[name]=now;
+  try{ s.fn(SND.ctx,SND.master,now+0.005,x); }catch(_){}
+}
+/* enemy sounds fade with distance — a far sniper's aim-tick is a whisper */
+function sfxAt(name,wx,x){
+  if(!P) return; const vol=Math.max(0.15,1-Math.abs(wx-P.x)/1100);
+  sfx(name,Object.assign({vol},x||{}));
+}
+setSound(SND.on);                                          // show the saved choice on the 🔊 button
+
 let lastGlitch="", HUDH=0;
 function glitch(where,e){
   lastGlitch=where+": "+(e&&e.message||e);
@@ -1686,6 +1792,7 @@ function breacherStep(e,dt){
       e.mode="wind"; e.modeT=TUNE.chargeWind; e.facing=(P.x>e.x)?1:-1;
       if(!SIM){ shake=Math.min(1,shake+0.6);
         floats.push({x:e.x,y:GROUND-e.def.h-30,txt:"ROAAAR!",col:"#ff6b8b",t:1.2,vy:-20,big:true}); }
+      sfx("roar");
     }
   } else if(e.mode==="wind"){
     e.modeT-=dt;
@@ -1703,6 +1810,7 @@ function breacherStep(e,dt){
       e.x=wall; e.mode="stun"; e.modeT=TUNE.chargeStun; e.hitCD=TUNE.chargeStun;
       if(!SIM){ shake=1; puff(e.x+e.facing*half,GROUND-40,"#cfd6df",16);
         floats.push({x:e.x,y:GROUND-e.def.h-30,txt:"CRASH! — HIT HIM!",col:"#5ec27a",t:1.6,vy:-22,big:true}); }
+      sfx("crash");
     }
   } else if(e.mode==="stun"){
     e.modeT-=dt;
@@ -1722,10 +1830,12 @@ function returnToSender(b){
   m.cracks=(m.cracks||0)+1; m.flash=0.2;
   if(!SIM){ puff(m.x,GROUND-m.def.h*0.5,"#c08bff",8);
     floats.push({x:m.x,y:GROUND-m.def.h-14,txt:"RETURN TO SENDER! "+m.cracks+"/"+TUNE.crackNeed,col:"#c08bff",t:1.1,vy:-26}); }
+  sfx("crack");
   if(m.cracks>=TUNE.crackNeed){
     m.cracks=0; m.vulnT=TUNE.armorWindow; m.stun=Math.max(m.stun,0.8);
     if(!SIM){ shake=1; puff(m.x,GROUND-m.def.h*0.5,"#ffd166",18);
       floats.push({x:m.x,y:GROUND-m.def.h-34,txt:"ARMOR BROKEN — HIT HIM!",col:"#5ec27a",t:1.6,vy:-22,big:true}); }
+    sfx("armorBreak");
   }
 }
 function hitEnemy(e,dmg,fromDir,isHex,src){
@@ -1766,6 +1876,10 @@ function hitEnemy(e,dmg,fromDir,isHex,src){
 }
 
 function step(dt){
+  /* 🔊 v0.28: ONE hurt sound for every way you can get hit (bullets, fists,
+     charges, crushes) — watch the hearts instead of chasing a dozen call sites */
+  if(P._hp!==undefined&&P.hp<P._hp&&!dead) sfx("hurt");
+  P._hp=P.hp;
   P.cd=Math.max(0,P.cd-dt); P.doorCD=Math.max(0,P.doorCD-dt);
   P.hurtT=Math.max(0,P.hurtT-dt); P.casting=Math.max(0,P.casting-dt);
   P.hexing=Math.max(0,P.hexing-dt); P.pickFlash=Math.max(0,P.pickFlash-dt);
@@ -1784,6 +1898,7 @@ function step(dt){
                   dmg:ARMS.doom.dmg,pierce:false,doom:true,maxHits:1,col:ARMS.doom.col,hits:[]});
       shake=Math.min(1,shake+0.5);
       if(!SIM) puff(P.x+P.doomFace*20,GROUND-44,"#b06bff",10);
+      sfx("doom");
       if(P.sel==="doom"&&(P.runes.doom||0)<=0) P.sel="hex";
     }
   }
@@ -1795,7 +1910,7 @@ function step(dt){
     if(P.potT<=0){
       const h=potHeal();                                       // ❤️ v0.24: Deep Draught
       P.hp=Math.min(maxHP(),P.hp+h);
-      floats.push({x:P.x,y:GROUND-84,txt:"❤️ +"+h,col:"#ff6b8b",t:1.1,vy:-28,big:true});
+      floats.push({x:P.x,y:GROUND-84,txt:"❤️ +"+h,col:"#ff6b8b",t:1.1,vy:-28,big:true}); sfx("heal");
       puff(P.x,GROUND-44,"#ff6b8b",8);
     }
   }
@@ -1807,7 +1922,7 @@ function step(dt){
       if(P.pickP>=1){
         const d=P.pickDoor; P.pickP=0;P.pickDoor=null;
         if(d){ d.locked=false; led.pick++;
-          floats.push({x:P.x,y:GROUND-92,txt:"CLICK.",col:"#5ec27a",t:1.1,vy:-24});
+          floats.push({x:P.x,y:GROUND-92,txt:"CLICK.",col:"#5ec27a",t:1.1,vy:-24}); sfx("unlock");
           enterDoor(d,TUNE.lockedLoot); }
       }
     }
@@ -1828,7 +1943,7 @@ function step(dt){
   const arm=ARMS[P.sel];
   if(wantCast()&&!busy&&P.cd<=0){
     if(arm.melee){
-      P.cd=arm.cd; P.casting=0.1; P.hexing=arm.cd*0.9; led.hex++;
+      P.cd=arm.cd; P.casting=0.1; P.hexing=arm.cd*0.9; led.hex++; sfx("hex");
       /* The hex hits the NEAREST thing in reach — enemy OR bullet.
          An incoming round is always closer than the man who fired it,
          so hexing down-range becomes suppression. */
@@ -1858,6 +1973,7 @@ function step(dt){
         tBullet.t=-1; led.pop++;
         puff(endX,endY,"#9646dc",8);
         returnToSender(tBullet);                         // 🎖️ v0.25
+        sfx("swat");
         /* 🛡️ v0.24 WARD — each level swats one MORE round in reach, nearest first.
            Without it, a Shotgunner's spread is a door-or-bleed problem (on purpose). */
         const extra=upg("ward");
@@ -1894,6 +2010,7 @@ function step(dt){
       /* 💀 v0.26: start the charge — committed, rooted, facing locked in */
       P.runes.doom--; led.fired++; led.runeCost+=TUNE.doomCost;
       P.doomT=TUNE.doomWind; P.doomFace=P.face; P.cd=TUNE.doomWind+arm.cd; P.casting=TUNE.doomWind;
+      sfx("doomCharge");
       if(!SIM) floats.push({x:P.x,y:GROUND-92,txt:"💀 …",col:"#b06bff",t:TUNE.doomWind,vy:-10});
     } else if(P.sel!=="doom"&&(P.runes[P.sel]||0)>0){
       P.runes[P.sel]--; led.fired++;
@@ -1906,6 +2023,7 @@ function step(dt){
         bolts.push({x:P.x+dr*18,y:GROUND-34,dir:dr,t:1.1,
                     dmg:arm.dmg,pierce:arm.pierce,maxHits,col:arm.col,hits:[],
                     aoe:arm.aoe?emberBlast():0});                  // 🔥 v0.26: Ember bursts
+      sfx(arm.pierce?"lance":"ember");
       shake=Math.min(1,shake+0.3);
       puff(P.x+P.face*18,GROUND-50,arm.col,3);
       if((P.runes[P.sel]||0)<=0){
@@ -1930,6 +2048,7 @@ function step(dt){
     /* ⚡ v0.26: the first time you ever reach block 8, the Lance unlocks — mid-run */
     if(!lanceWas&&runeUnlocked("lance")&&!SIM){
       floats.push({x:P.x,y:GROUND-120,txt:"⚡ LANCE UNLOCKED — find it at The Door",col:"#8fd8ff",t:2.6,vy:-16,big:true});
+      sfx("fanfare");
       shake=Math.min(1,shake+0.4);
     }
     const newD=districtFor(blockIdx);
@@ -1958,7 +2077,7 @@ function step(dt){
     const b=arena.boss;
     if(!b||b.hp<=0){
       arena.active=false; arena.boss=null;
-      banner("THE WAY IS OPEN");
+      banner("THE WAY IS OPEN"); sfx("bossDown");
       /* 🧪 v0.25 — a reward you can use RIGHT NOW (Talon: the gold didn't help
          until 5 blocks later). The fight takes your potions; it gives them back. */
       const had=P.pots; P.pots=Math.max(P.pots,potCap());
@@ -1967,7 +2086,7 @@ function step(dt){
       const M=SIM?SIMM:META;
       if(M){ M.up=M.up||{};
         if(!((M.up.doomkey)|0)){ M.up.doomkey=1; if(!SIM){ metaSave();
-          floats.push({x:P.x,y:GROUND-140,txt:"💀 DOOM UNLOCKED",col:"#b06bff",t:2.8,vy:-14,big:true}); } } }
+          floats.push({x:P.x,y:GROUND-140,txt:"💀 DOOM UNLOCKED",col:"#b06bff",t:2.8,vy:-14,big:true}); sfx("fanfare"); } } }
       P.runes.doom=(P.runes.doom||0)+1;
       if(!SIM) floats.push({x:P.x+30,y:GROUND-90,txt:"💀 +1",col:"#b06bff",t:1.6,vy:-26});
       if(!SIM) hud();
@@ -1980,7 +2099,7 @@ function step(dt){
       if(ph>(b.phase||1)){
         b.phase=ph;
         if(!SIM){ banner(b.def.face+"  PHASE "+ph); shake=1;
-          floats.push({x:b.x,y:GROUND-b.def.h-34,txt:ph===3?"LAST STAND":"HE'S ANGRY",col:"#ff6b8b",t:1.5,vy:-22,big:true}); }
+          floats.push({x:b.x,y:GROUND-b.def.h-34,txt:ph===3?"LAST STAND":"HE'S ANGRY",col:"#ff6b8b",t:1.5,vy:-22,big:true}); sfx("phase"); }
       }
       /* 🚧 v0.25 — you can't walk THROUGH a boss (Talon did, at block 40). Doors
          are how you get past one — which is exactly what gives the cage's doors a job. */
@@ -2000,7 +2119,7 @@ function step(dt){
           if(arena.hadSquad&&!arena.windowSaid){
             arena.windowSaid=true;
             if(!SIM){ shake=Math.min(1,shake+0.5);
-              floats.push({x:b.x,y:GROUND-b.def.h-30,txt:"SHIELD DOWN!",col:"#5ec27a",t:1.4,vy:-24,big:true}); }
+              floats.push({x:b.x,y:GROUND-b.def.h-30,txt:"SHIELD DOWN!",col:"#5ec27a",t:1.4,vy:-24,big:true}); sfx("shieldDown"); }
           }
           arena.summonT-=dt;
           if(arena.summonT<=0){
@@ -2037,12 +2156,14 @@ function step(dt){
             if(Math.abs(o.x-cx)<=b.aoe+o.def.w*0.5) hitEnemy(o,b.dmg,b.dir,false,"rune");
           }
           booms.push({x:cx,y:GROUND-36,r:b.aoe,t:0.35,col:b.col});
+          sfx("boom",{big:b.aoe>=TUNE.fireballBlast});
           if(!SIM) puff(cx,GROUND-36,b.col,10);
           shake=Math.min(1,shake+0.2); b.t=-1; break;
         }
         b.hits.push(e); puff(b.x,b.y,b.doom?"#b06bff":"#fff",b.doom?14:4);
         hitEnemy(e,b.dmg,b.dir,false,"rune");
         if(b.doom&&!SIM) floats.push({x:e.x,y:GROUND-e.def.h-20,txt:"DOOM",col:"#b06bff",t:0.9,vy:-30,big:true});
+        if(b.doom) sfx("boom",{big:true});
         if(b.hits.length>=(b.maxHits||1)){ b.t=-1; break; }
       }
     }
@@ -2136,7 +2257,7 @@ function step(dt){
         if(e.volleyT<=0){
           ebolts.push({x:e.x+e.facing*16,y:GROUND-34,dir:e.facing,
                        spd:R.spd,dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
-          e.volleyQ--; e.volleyT=TUNE.volleyGap;
+          e.volleyQ--; e.volleyT=TUNE.volleyGap; sfxAt("eshot",e.x);
           if(!SIM) puff(e.x+e.facing*18,GROUND-34,"#ffd9a0",3);
         }
       }
@@ -2159,12 +2280,13 @@ function step(dt){
             for(let s=0;s<shots;s++)
               ebolts.push({x:e.x+e.facing*16,y:GROUND-34-(s-1)*7,dir:e.facing,
                            spd:R.spd*(1+(s-1)*0.06),dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
-            e.reload=R.cool; shake=Math.min(1,shake+0.15);
+            e.reload=R.cool; shake=Math.min(1,shake+0.15); sfxAt("eshot",e.x);
             puff(e.x+e.facing*18,GROUND-34,"#ffd9a0",4);
           }
         } else {
           e.reload-=dt;
-          if(e.reload<=0&&dist<(R.fireAt||R.hold*1.25)) e.aim=R.wind;
+          /* 🔊 v0.28: a gun AIMING makes a tick — you can HEAR the off-screen sniper line up */
+          if(e.reload<=0&&dist<(R.fireAt||R.hold*1.25)){ e.aim=R.wind; sfxAt("aim",e.x); }
         }
       }
     } else {
@@ -2253,6 +2375,7 @@ function step(dt){
 }
 
 function killed(e,src){
+  if(!e.isBoss) sfx("kill");
   kills++;
   const c=coinOf(e.def); P.coin+=c; led.earn+=c;
   if(src==="rune") led.runeKillCoin+=c;   // the real Law-of-Return numerator
@@ -2285,11 +2408,11 @@ function die(){
     for(const b of ebolts) if(Math.abs(b.x-P.x)<360) b.t=-1;
     if(!SIM){
       puff(P.x,GROUND-44,"#c08bff",20);
-      floats.push({x:P.x,y:GROUND-96,txt:"NOT YET.",col:"#c08bff",t:1.8,vy:-26,big:true});
+      floats.push({x:P.x,y:GROUND-96,txt:"NOT YET.",col:"#c08bff",t:1.8,vy:-26,big:true}); sfx("wind");
     }
     return;
   }
-  dead=true;
+  dead=true; sfx("death");
   if(SIM) return;
   const m=Math.round(P.maxX/40);
   if(m>best){best=m; try{ localStorage.setItem("hexcap_best",m); }catch(e){ glitch("save best",e); } }   // 🛟 v0.22: was unguarded → the death freeze
