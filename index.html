@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.30 — Sheet B</title>
+<title>HexCap v0.31 — Sheet A</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.30 — SHEET B</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.31 — SHEET A</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -1693,18 +1693,23 @@ function aLegs(c,W,H,p,lw,legH,spread,ph){
 /* each painter draws in a frame where (0,0) = the unit's feet, -y is up, front = -x */
 const UNIT_ART={
   mob(c,W,H,p,e,m){
+    const a=e._atk||0;                                           // v0.31: both fists flail forward
     aLegs(c,W,H,p,0.3,0.32,0.2,e.bob);
+    aDot(c,0.66*W-0.9*W*a,-0.44*H-0.12*H*a,0.2*W,p.skin,p);
     aBox(c,-0.52*W,-0.96*H,1.04*W,0.68*H,0.22*W,p.skin,p);
-    aDot(c,-0.66*W,-0.44*H,0.2*W,p.skin,p); aDot(c,0.66*W,-0.44*H,0.2*W,p.skin,p);
+    aDot(c,-0.66*W-0.35*W*a,-0.44*H+0.06*H*a,0.2*W,p.skin,p);
     aFace(c,-0.1*W,-0.72*H,0.55*W,p,m);
   },
   thug(c,W,H,p,e,m){
+    /* v0.31 — the fist sat at MOUTH height and read as a pipe (Talon). Now it's held
+       out at chest height, clear of the face — and it PUNCHES when he hits you. */
+    const a=e._atk||0;
     aLegs(c,W,H,p,0.3,0.24,0.18,e.bob);
     aDot(c,0.52*W,-0.36*H,0.2*W,p.skin,p);                     // back fist
     aBox(c,-0.42*W,-1.0*H,0.84*W,0.8*H,0.12*W,p.skin,p);
-    aBox(c,-0.78*W,-0.66*H,0.5*W,0.16*W,0.06*W,p.skin,p);       // arm
-    aDot(c,-0.8*W,-0.7*H,0.24*W,p.skin,p);                      // raised fist
     aFace(c,-0.1*W,-0.8*H,0.62*W,p,m);
+    aBox(c,-0.9*W-0.45*W*a,-0.5*H,0.62*W+0.45*W*a,0.15*W,0.06*W,p.skin,p);   // arm (extends on the punch)
+    aDot(c,-0.92*W-0.45*W*a,-0.46*H,0.25*W,p.skin,p);           // fist, chest height
   },
   runner(c,W,H,p,e,m){
     c.save(); c.globalAlpha*=0.55; c.strokeStyle=p.wood; c.lineWidth=Math.max(1,H*0.035); c.lineCap="round";
@@ -1714,7 +1719,7 @@ const UNIT_ART={
     aBox(c,-0.62*W+st,-0.3*H,0.3*W,0.3*H,0.1*W,p.cloth,p);      // front leg (striding)
     aBox(c, 0.2*W-st,-0.3*H,0.3*W,0.3*H,0.1*W,p.cloth,p);       // back leg
     c.save(); c.rotate(-0.26);                                   // the LEAN: reads fast standing still
-    c.save(); c.translate(0.12*W,-0.5*H); c.rotate(0.55);        // the bat, up over the shoulder
+    c.save(); c.translate(0.12*W,-0.5*H); c.rotate(0.55-2.3*(e._atk||0));   // the bat — SWINGS on a hit (v0.31)
     aBox(c,-0.09*W,-0.95*H,0.2*W,0.95*H,0.1*W,p.wood,p); c.restore();
     aBox(c,-0.38*W,-1.0*H,0.76*W,0.74*H,0.14*W,p.skin,p);
     aBox(c,-0.42*W,-0.98*H,0.84*W,0.15*H,0.06*W,p.red,p);       // bandana
@@ -1771,9 +1776,10 @@ const UNIT_ART={
     aBox(c,-0.4*W,-0.86*H,0.56*W,0.08*H,0.03*W,p.gold,p);       // visor
     aFace(c,-0.08*W,-0.66*H,0.44*W,p,m);
     if(e.shieldHp>0){                                            // the plate — gone when you break it
-      aBox(c,-0.74*W,-0.86*H,0.58*W,0.84*H,0.08*W,p.metal,p);
-      aBox(c,-0.68*W,-0.8*H,0.46*W,0.72*H,0.05*W,p.metalD,p);
-      c.beginPath(); const sx=-0.45*W, sy=-0.5*H, s=0.13*W;
+      const bx=-0.3*W*(e._atk||0);                               // v0.31: SHIELD BASH
+      aBox(c,-0.74*W+bx,-0.86*H,0.58*W,0.84*H,0.08*W,p.metal,p);
+      aBox(c,-0.68*W+bx,-0.8*H,0.46*W,0.72*H,0.05*W,p.metalD,p);
+      c.beginPath(); const sx=-0.45*W+bx, sy=-0.5*H, s=0.13*W;
       c.moveTo(sx-s,sy-s); c.lineTo(sx+s,sy-s); c.lineTo(sx+s,sy+s*0.2); c.lineTo(sx,sy+s*1.1); c.lineTo(sx-s,sy+s*0.2); c.closePath();
       aFill(c,p.gold,p);
     } else {
@@ -1793,10 +1799,13 @@ const UNIT_ART={
     c.restore();
     aBox(c,-0.62*W,-1.0*H,0.56*W,0.4*H,0.12*W,p.skin,p);        // small head, set forward
     aFace(c,-0.36*W,-0.8*H,0.44*W,p,m);
+    const a=e._atk||0;                                           // v0.31: the haymaker
+    c.save(); c.translate(-0.7*W,-0.62*H); c.rotate(1.35*a); c.translate(0.7*W,0.62*H);
     aBox(c,-0.92*W,-0.66*H,0.42*W,0.48*H,0.18*W,p.skin,p);      // front arm, hanging
     aBox(c,-0.94*W,-0.3*H,0.46*W,0.08*H,0.03*W,p.clothD,p);     // wristband
     for(let i=0;i<3;i++) aDot(c,(-0.86+i*0.14)*W,-0.26*H,0.03*W,p.gold,p);
     aDot(c,-0.7*W,-0.16*H,0.22*W,p.skin,p);                     // fist
+    c.restore();
   }
 };
 /* draw one unit; returns false if it has no art (bosses) so the caller can fall back */
@@ -1805,15 +1814,104 @@ function drawUnitArt(e,px,by){
   if(!fn||e.isBoss) return false;
   const W=d.w, H=d.h, p=artPal(e);
   const mood=e.stun>0?"stun":(e.flash>0?"hurt":"");
+  e._atk=e.atkT>0?Math.sin((1-e.atkT/0.3)*Math.PI):0;              // 0 → 1 → 0 over the swing
   ctx.save();
   ctx.fillStyle="rgba(0,0,0,.28)";                                   // ground shadow
   ctx.beginPath(); ctx.ellipse(px,GROUND+by*0.3-1,W*0.62,4,0,0,Math.PI*2); ctx.fill();
   ctx.translate(px,GROUND+by);
   if(e.facing>0) ctx.scale(-1,1);                                    // art faces LEFT
+  if(e._atk) ctx.translate(-W*0.28*e._atk,0);                        // v0.31: lunge INTO the swing
   ctx.lineWidth=Math.max(1.5,H*0.045); ctx.lineJoin="round";
   try{ fn(ctx,W,H,p,e,mood); }catch(_){}
   ctx.restore();
   return true;
+}
+/* ==========================================================
+   🧙 v0.31 ART PASS 1 · SHEET A — THE WIZARD
+   From Talon's reference (Art/Sheet A - Wizard (color).png). Five poses, all
+   from ONE drawing + transforms: stand · walk (stride + motion lines) · cast
+   (staff thrust, angry face, orb flare) · hurt (lean back, > <, "!!") · DOOM
+   charge (staff overhead, skull gathering, the grin). Drawn facing RIGHT like
+   the sheet. The orb keeps the old tell: it glows the ARMED weapon's colour.
+   ========================================================== */
+const WIZ={robe:"#6b46c9",hat:"#8c5ee6",hatD:"#6a44c4",skin:"#f6dcc0",wood:"#e2a54e",
+  ol:"#1b1330",boot:"#3e2766",mouth:"#c2324a",gold:"#f2c14e"};
+function wizPose(){
+  if(P.doomT>0) return "doom";
+  if(P.hurtT>0.2) return "hurt";
+  if(P.casting>0||P.hexing>0.12) return "cast";
+  if(P.mv) return "walk";
+  return "stand";
+}
+function drawWizard(ppx){
+  const c=ctx, o=WIZ, pose=wizPose(), orbCol=ARMS[P.sel].col;
+  const line=(x1,y1,x2,y2,w,col)=>{ c.strokeStyle=o.ol; c.lineWidth=w+2.4; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+                                    c.strokeStyle=col; c.lineWidth=w; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); };
+  const blob=(x,y,r,col)=>{ c.fillStyle=col; c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill(); c.strokeStyle=o.ol; c.lineWidth=2; c.stroke(); };
+  c.save(); c.translate(ppx,GROUND); if(P.face<0) c.scale(-1,1);
+  c.lineJoin="round"; c.lineCap="round";
+  if(pose==="walk"){                                                // motion lines, like the sheet
+    c.save(); c.globalAlpha*=0.6; c.strokeStyle=o.gold; c.lineWidth=2;
+    for(let i=0;i<3;i++){ const y=-12-i*6; c.beginPath(); c.moveTo(-20-i*3,y); c.lineTo(-32-i*3,y); c.stroke(); }
+    c.restore();
+  }
+  const st=pose==="walk"?Math.sin(P.x/9)*5:((pose==="cast"||pose==="doom")?4:0);
+  for(const bx of [-6-st,6+st]){ aRR(c,bx-5,-5,10,5,2.5); c.fillStyle=o.boot; c.fill(); c.strokeStyle=o.ol; c.lineWidth=2; c.stroke(); }
+  c.save(); c.rotate(pose==="cast"?0.1:pose==="hurt"?-0.16:pose==="walk"?0.05:0);
+  c.beginPath(); c.moveTo(-9,-34); c.lineTo(9,-34); c.lineTo(15,-3); c.lineTo(-15,-3); c.closePath();   // robe
+  c.fillStyle=o.robe; c.fill(); c.strokeStyle=o.ol; c.lineWidth=2.2; c.stroke();
+  /* staff + orb, by pose */
+  let sx1,sy1,sx2,sy2,hx,hy,ox,oy,orbR,glowR;
+  if(pose==="cast"){ sx1=4;sy1=-24; sx2=30;sy2=-30; hx=7;hy=-25; ox=33;oy=-31; orbR=6.5; glowR=20; }
+  else if(pose==="doom"){ sx1=11;sy1=-26; sx2=14;sy2=-74; hx=11;hy=-46; ox=14;oy=-78; orbR=5.5; glowR=14; }
+  else { sx1=13;sy1=-2; sx2=14;sy2=-50; hx=12;hy=-22; ox=14;oy=-54; orbR=5; glowR=10; }
+  line(sx1,sy1,sx2,sy2,3.2,o.wood);
+  blob(3,-38,9.5,o.skin);                                           // head
+  /* the hat: one wide cone pulled down low over the head, no band — like the sheet */
+  c.beginPath(); c.moveTo(-16,-41); c.lineTo(-1,-80); c.lineTo(22,-45.5); c.closePath();
+  c.fillStyle=o.hat; c.fill(); c.strokeStyle=o.ol; c.lineWidth=2.2; c.stroke();
+  /* the face — drawn after the hat so the brows can bite into the brim */
+  c.fillStyle=o.ol; c.strokeStyle=o.ol;
+  if(pose==="hurt"){
+    c.lineWidth=1.8; c.beginPath();
+    c.moveTo(0.5,-41.5); c.lineTo(3.5,-39.5); c.lineTo(0.5,-37.5); c.moveTo(10.5,-41.5); c.lineTo(7.5,-39.5); c.lineTo(10.5,-37.5); c.stroke();
+    c.fillStyle=o.mouth; c.beginPath(); c.arc(5.5,-33.5,1.8,0,Math.PI*2); c.fill();
+  } else {
+    const mad=pose==="cast"||pose==="doom", ey=mad?-41:-42, eh=mad?3.4:4.2;
+    aRR(c,3,ey,2.2,eh,1.1); c.fill(); aRR(c,8,ey,2.2,eh,1.1); c.fill();
+    if(mad){                                                        // the wedge brows
+      c.lineWidth=2.3; c.beginPath(); c.moveTo(1.3,-44.2); c.lineTo(5.4,-42.2); c.moveTo(12,-44.6); c.lineTo(7.8,-42.4); c.stroke();
+      c.fillStyle=o.mouth; c.beginPath();
+      if(pose==="doom"){ c.arc(6.5,-35,3.2,0,Math.PI); c.closePath(); }      // the GRIN
+      else { c.moveTo(3.5,-35.5); c.lineTo(9.5,-35.5); c.lineTo(8.5,-32); c.lineTo(4.5,-32); c.closePath(); }   // shouting
+      c.fill(); c.lineWidth=1; c.stroke();
+    }
+  }
+  blob(hx,hy,3.4,o.skin);                                           // hand on the staff
+  /* the orb — glows the colour of whatever's armed */
+  const g=c.createRadialGradient(ox,oy,0,ox,oy,glowR);
+  g.addColorStop(0,"rgba(255,255,255,.95)"); g.addColorStop(0.35,orbCol); g.addColorStop(1,"rgba(0,0,0,0)");
+  c.fillStyle=g; c.beginPath(); c.arc(ox,oy,glowR,0,Math.PI*2); c.fill();
+  c.fillStyle="#fff"; c.beginPath(); c.arc(ox,oy,orbR*0.55,0,Math.PI*2); c.fill();
+  if(pose==="doom"){                                                // the skull gathering above the orb
+    const k=1-P.doomT/Math.max(0.01,TUNE.doomWind);
+    const s=0.55+0.55*k, sy=oy-13-9*k;                              // a purple skull, drawn (not an emoji)
+    c.save(); c.globalAlpha*=0.35+0.65*k; c.translate(ox,sy); c.scale(s,s);
+    c.shadowColor="#b06bff"; c.shadowBlur=14; c.fillStyle="#c98cff";
+    c.beginPath(); c.arc(0,-2,10,0,Math.PI*2); c.fill();
+    aRR(c,-6,4,12,7,2.5); c.fill(); c.shadowBlur=0;
+    c.fillStyle="#3a1a66";
+    c.beginPath(); c.arc(-4,-2,3,0,Math.PI*2); c.arc(4,-2,3,0,Math.PI*2); c.fill();
+    c.beginPath(); c.moveTo(0,2); c.lineTo(-1.5,5); c.lineTo(1.5,5); c.closePath(); c.fill();
+    c.fillRect(-2.6,8,1.3,3); c.fillRect(1.3,8,1.3,3);
+    c.restore();
+  }
+  c.restore();
+  if(pose==="hurt"){                                                // the sheet's "!!"
+    c.strokeStyle=o.gold; c.lineWidth=2.5;
+    for(const [x1,y1,x2,y2] of [[-4,-84,-7,-92],[3,-86,3,-95],[10,-84,13,-92]]){ c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
+  }
+  c.restore();
 }
 /* the sheet's yellow "!!" — here it means: THIS ONE IS AIMING AT YOU */
 function drawAimMarks(px,topY,t){
@@ -2163,12 +2261,14 @@ function step(dt){
   }
   const busy=P.hidden||P.entryT>0||P.pickP>0||P.potT>0||P.doomT>0;
 
+  P.mv=0;
   if(!busy){
     let mv=0;
     if(wantLeft()){mv=-1;P.face=-1;}
     if(wantRight()){mv=1;P.face=1;}
     const mult=P.hexing>0?TUNE.hexMove:(P.casting>0?TUNE.castMove:1);
     P.x+=mv*TUNE.speed*mult*dt;
+    P.mv=mv;                                       // 🎨 v0.31: is the wizard walking (for the stride pose)
     if(P.x<20) P.x=20;
     if(P.x>P.maxX) P.maxX=P.x;
   }
@@ -2245,7 +2345,7 @@ function step(dt){
       P.runes.doom--; led.fired++; led.runeCost+=TUNE.doomCost;
       P.doomT=TUNE.doomWind; P.doomFace=P.face; P.cd=TUNE.doomWind+arm.cd; P.casting=TUNE.doomWind;
       sfx("doomCharge");
-      if(!SIM) floats.push({x:P.x,y:GROUND-92,txt:"💀 …",col:"#b06bff",t:TUNE.doomWind,vy:-10});
+      /* v0.31: the "💀 …" float is gone — the wizard's own skull-over-the-orb is the tell now */
     } else if(P.sel!=="doom"&&(P.runes[P.sel]||0)>0){
       P.runes[P.sel]--; led.fired++;
       led.runeCost += runeCost(P.sel);
@@ -2437,6 +2537,7 @@ function step(dt){
       e.hp=-99; if(!SIM) puff(e.x,GROUND-30,"#6f6b85",5); continue;
     }
     e.flash=Math.max(0,e.flash-dt); e.hitCD=Math.max(0,e.hitCD-dt);
+    if(e.atkT>0) e.atkT=Math.max(0,e.atkT-dt);
     e.stun=Math.max(0,e.stun-dt); e.bob+=dt*6;
     if(e.laneCD>0) e.laneCD-=dt;
     if(e.turnCD>0) e.turnCD-=dt;
@@ -2527,6 +2628,7 @@ function step(dt){
       e.x+=e.facing*spd*slow*dt;
       if(dist<e.def.w*0.5+14&&e.hitCD<=0){
         e.hitCD=0.85; P.hp-=(e.dmg||e.def.dmg); P.hurtT=0.45; shake=1;
+        e.atkT=0.3;                                // 🎨 v0.31: swing! (punch / bat / bash) — looks only
         P.entryT=0;P.entryDoor=null;
         if(P.pickP>0){ P.pickP=Math.max(0.0001,P.pickP-TUNE.pickSetback/100); P.pickFlash=0.4; }
         floats.push({x:P.x,y:GROUND-66,txt:"-"+(e.dmg||e.def.dmg),col:"#ff6b8b",t:0.8,vy:-34});
@@ -3000,23 +3102,9 @@ function draw(){
 
   ctx.globalAlpha=P.hidden?0.55:1;
   if(P.hurtT>0&&Math.floor(P.hurtT*22)%2===0) ctx.globalAlpha*=0.35;
-  ctx.fillStyle="#3b3570";
-  ctx.beginPath(); ctx.moveTo(ppx-13,GROUND); ctx.lineTo(ppx-8,GROUND-36);
-  ctx.lineTo(ppx+8,GROUND-36); ctx.lineTo(ppx+13,GROUND); ctx.closePath(); ctx.fill();
-  ctx.fillStyle="#efe3c8"; ctx.beginPath(); ctx.arc(ppx,GROUND-42,7.5,0,7); ctx.fill();
-  ctx.fillStyle="#1b1733";
-  ctx.fillRect(ppx+P.face*1.5-2,GROUND-44,2,3); ctx.fillRect(ppx+P.face*1.5+2,GROUND-44,2,3);
-  ctx.fillStyle="#8b85ff";
-  ctx.beginPath(); ctx.moveTo(ppx-12,GROUND-47); ctx.lineTo(ppx+P.face*6,GROUND-76);
-  ctx.lineTo(ppx+12,GROUND-47); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle="#6b5a3a"; ctx.lineWidth=3;
-  ctx.beginPath(); ctx.moveTo(ppx+P.face*11,GROUND-4); ctx.lineTo(ppx+P.face*15,GROUND-52); ctx.stroke();
-  const tc=ARMS[P.sel].col,RR=P.casting>0?17:9;
-  const tg=ctx.createRadialGradient(ppx+P.face*15,GROUND-54,0,ppx+P.face*15,GROUND-54,RR);
-  tg.addColorStop(0,"#fff"); tg.addColorStop(0.5,tc); tg.addColorStop(1,"rgba(0,0,0,0)");
-  ctx.fillStyle=tg; ctx.beginPath(); ctx.arc(ppx+P.face*15,GROUND-54,RR,0,7); ctx.fill();
-  ctx.fillStyle=tc; ctx.font="bold 13px Verdana"; ctx.textAlign="center";
-  ctx.fillText(P.face>0?"▶":"◀",ppx+P.face*26,GROUND-30);
+  drawWizard(ppx);                                  // 🧙 v0.31: Sheet A
+  ctx.fillStyle=ARMS[P.sel].col; ctx.font="bold 11px Verdana"; ctx.textAlign="center";
+  ctx.globalAlpha*=0.7; ctx.fillText(P.face>0?"▶":"◀",ppx+P.face*25,GROUND-10);   // facing is a commitment — keep the tell
   ctx.globalAlpha=1;
 
   for(const p of parts){
