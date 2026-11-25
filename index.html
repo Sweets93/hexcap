@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.28 — Sound</title>
+<title>HexCap v0.29 — Sound Fix</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.28 — SOUND</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.29 — SOUND FIX</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -363,6 +363,10 @@
         <button class="btn" id="sizeDn" style="padding:6px 14px;font-size:16px">−</button>
         <span id="sizeVal">100%</span>
         <button class="btn" id="sizeUp" style="padding:6px 14px;font-size:16px">+</button>
+      </div>
+      <div id="audRow" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:#8e89a8">
+        <span id="audDbg" style="font-size:11px">audio: not started</span>
+        <button class="btn" id="sndTest" style="padding:6px 12px;font-size:12px">🔊 TEST SOUND</button>
       </div></div>
     <div class="panel" id="over"><h2>THEY GOT YOU</h2>
       <div class="res" id="overRes"></div>
@@ -1326,6 +1330,12 @@ document.getElementById("again").addEventListener("click",reset);
 document.getElementById("leave").addEventListener("click",closeShop);
 document.getElementById("pauseBtn").addEventListener("click",togglePause);
 document.getElementById("sndBtn").addEventListener("click",()=>{ audioUnlock(); setSound(!SND.on); if(SND.on) sfx("buy"); });
+/* 🔊 v0.29 — a real tap on the pause screen: unlock, force sound on, play a fanfare */
+document.getElementById("sndTest").addEventListener("click",()=>{
+  audioUnlock(); if(!SND.on) setSound(true);
+  const go=()=>{ SND.last.fanfare=-9; sfx("fanfare"); audDbg(); };
+  if(SND.ctx&&SND.ctx.state!=="running"){ const p=SND.ctx.resume(); if(p&&p.then) p.then(go).catch(go); else go(); } else go();
+});
 document.getElementById("resume").addEventListener("click",togglePause);
 document.querySelectorAll(".arm[data-w]").forEach(el=>{
   el.addEventListener("pointerdown",e=>{e.preventDefault();select(el.dataset.w);});
@@ -1357,6 +1367,7 @@ function togglePause(){
   if(dead||shopOpen) return;
   paused=!paused;
   document.getElementById("pz").style.display=paused?"flex":"none";
+  if(paused) audDbg();                                      // 🔎 v0.29
   document.getElementById("pauseBtn").textContent=paused?"▶ RESUME":"⏸ PAUSE";
 }
 let booms=[];   // 🔥 v0.26 blast rings
@@ -1615,16 +1626,39 @@ let last=performance.now();
    ========================================================== */
 const SND={on:true,ctx:null,master:null,last:{}};
 try{ const v=localStorage.getItem("hexcap_sound"); if(v!==null) SND.on=(v==="1"); }catch(_){}
+/* 🩹 v0.29 — "I still can't hear anything" (Talon's iPhone). iOS only unlocks audio
+   on ACTIVATION gestures: touchEND / pointerUP / click / keydown — NOT pointerdown.
+   v0.28 created the engine on pointerdown, so on iPhone it was born locked and could
+   stay that way; and sfx() only accepted state "running" (iOS also has
+   "interrupted"). Now: wake on real activation gestures (capture phase, so nothing
+   can swallow them), play a one-sample silent buffer to prime the hardware (the
+   classic iOS unlock), and keep nudging resume() whenever it isn't running. */
 function audioUnlock(){
-  if(SND.ctx){ if(SND.ctx.state==="suspended") SND.ctx.resume(); return; }
   const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
-  try{ SND.ctx=new AC(); SND.master=SND.ctx.createGain(); SND.master.gain.value=0.55;
-       SND.master.connect(SND.ctx.destination); }catch(_){}
+  if(!SND.ctx){
+    try{ SND.ctx=new AC(); SND.master=SND.ctx.createGain(); SND.master.gain.value=0.6;
+         SND.master.connect(SND.ctx.destination); }catch(_){ return; }
+  }
+  const c=SND.ctx;
+  if(c.state!=="running"){ try{ const p=c.resume(); if(p&&p.catch) p.catch(()=>{}); }catch(_){} }
+  if(!SND.primed){
+    try{ const b=c.createBuffer(1,1,22050), s=c.createBufferSource(); s.buffer=b; s.connect(c.destination); s.start(0); SND.primed=true; }catch(_){}
+  }
+  audDbg();
 }
-["pointerdown","keydown","touchend"].forEach(ev=>addEventListener(ev,audioUnlock,{passive:true}));
+["touchend","pointerup","click","keydown","mousedown"].forEach(ev=>document.addEventListener(ev,audioUnlock,{capture:true,passive:true}));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&SND.ctx&&SND.ctx.state!=="running"){ try{ SND.ctx.resume(); }catch(_){} } });
+/* 🔎 the pause screen shows what the audio engine is actually doing */
+function audDbg(){
+  const el=document.getElementById("audDbg"); if(!el) return;
+  const st=!SND.ctx?"not started — tap anywhere":SND.ctx.state;
+  el.textContent="audio: "+st+" · sound "+(SND.on?"ON":"OFF");
+  el.style.color=(SND.ctx&&SND.ctx.state==="running"&&SND.on)?"#5ec27a":"#ff9f68";
+}
 function setSound(on){
   SND.on=!!on; try{ localStorage.setItem("hexcap_sound",SND.on?"1":"0"); }catch(_){}
   const b=document.getElementById("sndBtn"); if(b) b.textContent=SND.on?"🔊":"🔇";
+  audDbg();
 }
 /* --- two primitives: a tone and a filtered noise burst --- */
 function tn(ac,out,t,o){
@@ -1690,7 +1724,8 @@ const SFX={
   death:     {gap:1,   fn:(a,o,t)=>tn(a,o,t,{f:440,f2:55,d:.9,type:"square",v:.16})}
 };
 function sfx(name,x){
-  if(SIM||!SND.on||!SND.ctx||SND.ctx.state!=="running") return;
+  if(SIM||!SND.on||!SND.ctx) return;
+  if(SND.ctx.state!=="running"){ try{ const p=SND.ctx.resume(); if(p&&p.catch) p.catch(()=>{}); }catch(_){} return; }
   const s=SFX[name]; if(!s) return;
   const now=SND.ctx.currentTime;
   if(now-(SND.last[name]===undefined?-9:SND.last[name])<(s.gap||0)) return;
