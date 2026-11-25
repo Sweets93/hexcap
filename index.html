@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.25 — Bosses</title>
+<title>HexCap v0.26 — Runes</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -136,8 +136,14 @@
     grid-template-columns:52px 52px 52px;grid-template-rows:52px 52px 52px;gap:6px}
   body.mobile #padR #padArms{display:contents}
   body.mobile #padR #padArms button{width:100%;height:100%;font-size:15px}
-  body.mobile #padR #pHex{grid-column:2;grid-row:1} body.mobile #padR #pEmber{grid-column:3;grid-row:1}
-  body.mobile #padR #pLance{grid-column:1;grid-row:2} body.mobile #padR #pPot{grid-column:1;grid-row:3}
+  /* 🔮 v0.26 — Talon's layout: HEX + POTION across the top; the runes climb the
+     left side in the order you earn them — EMBER (bottom), LANCE, DOOM (top corner).
+        💀  ✦  🧪
+        ⚡ [CAST]
+        🔥 [CAST]                                                              */
+  body.mobile #padR #pDoom{grid-column:1;grid-row:1}
+  body.mobile #padR #pHex{grid-column:2;grid-row:1} body.mobile #padR #pPot{grid-column:3;grid-row:1}
+  body.mobile #padR #pLance{grid-column:1;grid-row:2} body.mobile #padR #pEmber{grid-column:1;grid-row:3}
   /* 🎚️ v0.19 — button size is a slider (pause screen). Scales from each corner. */
   body.mobile #padL{transform:scale(var(--bs,1));transform-origin:bottom left}
   body.mobile #padR{transform:scale(var(--bs,1));transform-origin:bottom right}
@@ -159,7 +165,7 @@
      the controls are without it actually being something you have to touch." */
   /* v0.22: it sat over the left side of the STREET. Now it's small and lives down
      in the sidewalk strip under the road — where the thumbs live, not the fight. */
-  #slideHint{position:absolute;left:max(16px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));
+  #slideHint{position:absolute;left:calc(44px + env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));
     pointer-events:none;
     display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto auto auto auto;
     align-items:center;justify-items:center;gap:1px 10px;
@@ -182,6 +188,22 @@
   body.mobile .buy{min-width:0;flex:1 1 0;padding:9px 10px}
   body.mobile .buy .t{font-size:16px} body.mobile .buy .d{font-size:12px}
   body.mobile #shop .res{margin-bottom:6px;line-height:1.5}
+  /* v0.26: five buys now. On a SHORT landscape phone, The Door goes compact so every
+     BUY button is on screen without scrolling. The boss warning (#vline) stays —
+     it's what tells you his trick. */
+  @media (max-height:430px){
+    body.mobile #shop{padding:8px 12px}
+    body.mobile #shop h2{font-size:19px;margin:0}
+    body.mobile #vline{font-size:12px;margin-bottom:2px;line-height:1.35}
+    body.mobile #vwarn{display:none}
+    body.mobile #shop .res{font-size:12px;margin-bottom:4px;line-height:1.3}
+    body.mobile #shop .res b{font-size:14px}
+    body.mobile .buy{padding:6px 7px}
+    body.mobile .buy .t{font-size:13px;margin-bottom:4px}
+    body.mobile .buy .d{display:none}
+    body.mobile .buy button{font-size:13px;padding:7px}
+    body.mobile .buy .row2 button{font-size:11px;padding:5px}
+  }
   body.mobile #vline{margin-bottom:4px}
   body.mobile .buy button{font-size:15px;padding:9px} body.mobile .buy .row2 button{font-size:13px;padding:7px}
   body.mobile #sigHead{font-size:15px} body.mobile #sigHead b{font-size:18px}
@@ -273,7 +295,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.25 — BOSSES</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.26 — RUNES</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -297,8 +319,9 @@
 
   <div id="arms">
     <div class="arm sel" data-w="hex"><div class="n">✦</div><div class="l">HEX</div><div class="c">∞</div><div class="r" id="rHex">close</div><div class="cdbar"><i></i></div></div>
-    <div class="arm" data-w="ember"><div class="n">🔥</div><div class="l">EMBER</div><div class="c" id="nEmber">0</div><div class="r" id="rEmber">far · heavy</div><div class="cdbar"><i></i></div></div>
+    <div class="arm" data-w="ember"><div class="n">🔥</div><div class="l" id="lEmberName">EMBER</div><div class="c" id="nEmber">0</div><div class="r" id="rEmber">far · blast</div><div class="cdbar"><i></i></div></div>
     <div class="arm" data-w="lance"><div class="n">⚡</div><div class="l">LANCE</div><div class="c" id="nLance">0</div><div class="r" id="rLance">far · pierces</div><div class="cdbar"><i></i></div></div>
+    <div class="arm" data-w="doom"><div class="n">💀</div><div class="l">DOOM 5</div><div class="c" id="nDoom">0</div><div class="r" id="rDoom">charged</div><div class="cdbar"><i></i></div></div>
     <div class="arm" id="potChip" style="max-width:120px"><div class="n">🧪</div><div class="l">POTION</div><div class="c" id="nPot">0</div><div class="r">4 · use</div><div class="cdbar"><i></i></div></div>
   </div>
 
@@ -364,6 +387,7 @@
         <button data-w="hex"   id="pHex"   data-label="HEX">✦</button>
         <button data-w="ember" id="pEmber" data-label="EMBER">🔥</button>
         <button data-w="lance" id="pLance" data-label="LANCE">⚡</button>
+        <button data-w="doom"  id="pDoom"  data-label="DOOM">💀</button>
         <button id="pPot" data-label="POTION">🧪</button>
       </div>
       <button id="bCast" class="wide"><span id="castIcon">✦</span><br>CAST<i id="castCd"></i></button>
@@ -378,7 +402,7 @@
 
   <div class="keys">
     <kbd>A</kbd><kbd>D</kbd> move &amp; face · <kbd>Space</kbd> cast · <kbd>S</kbd> door / pick lock ·
-    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>/<kbd>Q</kbd><kbd>E</kbd> switch · <kbd>4</kbd> drink a potion ·
+    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>/<kbd>Q</kbd><kbd>E</kbd> switch · <kbd>4</kbd> drink a potion · <kbd>5</kbd> 💀 doom ·
     <kbd>P</kbd> pause · <kbd>R</kbd> restart
   </div>
 
@@ -545,19 +569,44 @@ const TUNE = {
   bossSwing:1.15, arenaWide:820, bossGrace:1.4, bossCard:2.4,
   /* 🧟 v0.25 boss tricks — every number a slider */
   bossGuard:0.25, bossWindowMult:1.5, breachStunMult:2,
-  squadGap:4.5, chargeEvery:5.2, chargeWind:1.25, chargeSpeed:520, chargeStun:3.2,
-  crackNeed:3, armorWindow:5,
+  /* v0.26: Breacher slowed "a teeny bit" (Talon nearly got caught WITH Quickstep):
+     520→440 charge, 1.25→1.45s roar. Marshal volleys spaced by volleyGap. */
+  squadGap:4.5, chargeEvery:5.2, chargeWind:1.45, chargeSpeed:440, chargeStun:3.2,
+  crackNeed:3, armorWindow:5, volleyGap:0.42,
+  /* 🔮 v0.26 RUNES — every rune gets its own job */
+  lanceUnlock:8, emberBlast:58, fireballBlast:100,
+  doomDmg:12, doomCost:24, doomWind:0.55, doomSpeed:460,
   speed:190, castMove:0.45, hp:5
 };
 
 const ARMS = {
   hex:{key:"hex",label:"HEX",icon:"✦",col:"#9646dc",free:true,melee:true,
        get dmg(){return TUNE.hexDmg}, get cd(){return TUNE.hexCD}},
-  ember:{key:"ember",label:"EMBER",icon:"🔥",col:"#ff8c42",pierce:false,
+  /* 🔮 v0.26 — EVERY RUNE HAS A JOB (Talon: "Lance is just a better Ember… I want
+     each rune to have its own place"; he died holding 542 Lances and 35 Embers).
+        ✦ HEX   — free, close, swats bullets
+        🔥 EMBER — CROWDS: bursts on the first body, hits everyone around it
+                   (Fireball?! makes it FIREBALL: the blast you always cast anyway)
+        ⚡ LANCE — LINES: pierces everything in a row. Unlocked at block 8.
+        💀 DOOM  — ONE BIG TARGET: a charged, rooted cast. Unlocked by your first boss. */
+  ember:{key:"ember",get label(){return upg("twin")?"FIREBALL":"EMBER"},icon:"🔥",col:"#ff8c42",pierce:false,aoe:true,
        get dmg(){return TUNE.emberDmg+upg("kindling")}, get cd(){return TUNE.runeCD}},
   lance:{key:"lance",label:"LANCE",icon:"⚡",col:"#8fd8ff",pierce:true,
-       get dmg(){return TUNE.lanceDmg+upg("conduction")}, get cd(){return TUNE.runeCD}}
+       get dmg(){return TUNE.lanceDmg+upg("conduction")}, get cd(){return TUNE.runeCD}},
+  doom:{key:"doom",label:"DOOM",icon:"💀",col:"#b06bff",pierce:false,doom:true,
+       get dmg(){return TUNE.doomDmg+2*upg("malice")}, get cd(){return TUNE.runeCD}}
 };
+const RUNE_ORDER=["hex","ember","lance","doom"];
+function emberBlast(){ return upg("twin")?TUNE.fireballBlast:TUNE.emberBlast; }
+function runeCost(w){ return w==="ember"?TUNE.emberCost:w==="lance"?TUNE.lanceCost:w==="doom"?TUNE.doomCost:0; }
+/* 🔓 milestones: Lance the first time you reach block 8; Doom by beating a boss */
+function runeUnlocked(w){
+  if(w==="hex"||w==="ember") return true;
+  const M=SIM?SIMM:META; if(!M) return true;
+  if(w==="lance") return Math.max(M.deepest|0,(typeof blockIdx==="number"?blockIdx+1:0))>=TUNE.lanceUnlock;
+  if(w==="doom")  return ((M.up&&M.up.doomkey)|0)>0;
+  return false;
+}
 
 /* from = first block · ramp = blocks to full weight · fade = block it starts
    becoming chaff · stagger 0 = unflinching · shield = frontal armour
@@ -750,8 +799,12 @@ const SIGILS=[
                                 now:lv=>`${hexReach()} → ${hexReach()+25}px`},
   {id:"nimble",  tier:1,icon:"🔓",name:"Nimble",     max:2,cost:[10,22],
    step:"pick locks 35% faster",now:lv=>`${pickSecs().toFixed(1)}s → ${(TUNE.pickTime*Math.max(0.2,1-0.35*(lv+1))).toFixed(1)}s`},
-  {id:"twin",    tier:1,icon:"🔥",name:"Twin Ember", max:1,cost:[20],
-   step:"embers punch through one extra body"},
+  /* 🔥 v0.26 — was Twin Ember (+1 pierce). Now the wizard-cliché upgrade (Talon:
+     "every wizard in any game… 'I cast fireball' — it's always the go-to, even
+     when it shouldn't be"). Same id, so anyone who owned Twin Ember owns this. */
+  {id:"twin",    tier:1,icon:"🔥",name:"Fireball?!", max:1,cost:[20],
+   step:"your Ember becomes FIREBALL — a much bigger blast",
+   now:lv=>`${TUNE.emberBlast}px → ${TUNE.fireballBlast}px blast`},
   {id:"deeplance",tier:1,icon:"⚡",name:"Deep Lance",max:2,cost:[16,34],
    step:"+2 lance pierce",      now:lv=>`${lancePierce()} → ${lancePierce()+2} bodies`},
   /* 🛡️ v0.24 — WARD: the Shotgunner stays scary (Talon: "you don't get to swat all
@@ -805,10 +858,15 @@ const SIGILS=[
      run with 0 embers and 55 lances.) */
   {id:"kindling",tier:3,icon:"🔥",name:"Kindling",   max:0,
    costFn:lv=>Math.ceil(22*Math.pow(1.205,lv)),
-   step:"+1 ember damage",      now:lv=>`${ARMS.ember.dmg} → ${ARMS.ember.dmg+1} dmg`},
+   step:"+1 ember / fireball damage", now:lv=>`${ARMS.ember.dmg} → ${ARMS.ember.dmg+1} dmg`},
   {id:"conduction",tier:3,icon:"⚡",name:"Conduction",max:0,
    costFn:lv=>Math.ceil(22*Math.pow(1.205,lv)),
    step:"+1 lance damage",      now:lv=>`${ARMS.lance.dmg} → ${ARMS.lance.dmg+1} dmg`},
+  /* 💀 v0.26 — Doom scales TWICE as fast as the others (Talon: "+2 while the
+     others are still going up 1"). It's single-target, so it can afford to. */
+  {id:"malice",  tier:3,icon:"💀",name:"Malice",     max:0,
+   costFn:lv=>Math.ceil(22*Math.pow(1.205,lv)),
+   step:"+2 DOOM damage",       now:lv=>`${ARMS.doom.dmg} → ${ARMS.doom.dmg+2} dmg`},
 
   /* 🏆 TIER V — THE CAPSTONES. Deliberately brutal. You should SEE these for a
      long time before you can have them. (Talon: "you get to a certain floor and
@@ -1021,11 +1079,11 @@ let SIM=false, BOT=null, sigOpen=false;
 function reset(){
   doors=new Map();
   P={x:60,y:GROUND,face:1,hp:maxHP(),coin:startCoin(),
-     runes:{ember:TUNE.startEmber,lance:0},
+     runes:{ember:TUNE.startEmber,lance:0,doom:0}, doomT:0, doomFace:1,
      pots:Math.min(potCap(),1), potT:0, wind:upg("secondwind")>0, sel:"hex",
      cd:0,hidden:false,door:null,doorCD:0,entryT:0,entryDoor:null,
      pickP:0,pickDoor:null,pickFlash:0,hurtT:0,maxX:60,casting:0,hexing:0};
-  enemies=[];bolts=[];ebolts=[];zaps=[];parts=[];floats=[];
+  enemies=[];bolts=[];ebolts=[];zaps=[];parts=[];floats=[];booms=[];
   cam=0;budget=2;burstT=1.4;blockIdx=0;kills=0;lastX=60;
   arena={active:false,lo:0,hi:0,boss:null,summonT:0,bossMax:1,
          pending:null,trigger:0,block:0,cine:0};
@@ -1121,6 +1179,7 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyQ") cycle(-1);
   if(e.code==="KeyE") cycle(1);
   if(e.code==="Digit4") usePoultice();
+  if(e.code==="Digit5") select("doom");                     // 💀 v0.26
 });
 addEventListener("keyup",e=>{keys[e.code]=false;});   // never gated — a release must ALWAYS register
 /* 👐 MULTI-TOUCH, DONE PROPERLY.
@@ -1184,8 +1243,9 @@ document.getElementById("ctrlMode").addEventListener("click",()=>{
    only tapped: the page's touch blocking fights native range inputs). Two plain
    buttons can't misbehave. 80%–140% in 10% steps. */
 function bumpSize(d){ CTRL.size=Math.round(Math.max(0.8,Math.min(1.4,CTRL.size+d))*100)/100; applyCtrl(); }
-document.getElementById("sizeDn").addEventListener("click",()=>bumpSize(-0.1));
-document.getElementById("sizeUp").addEventListener("click",()=>bumpSize(0.1));
+/* v0.26: 5% steps — Talon wants ~85% ("up to the line of the street, never into it") */
+document.getElementById("sizeDn").addEventListener("click",()=>bumpSize(-0.05));
+document.getElementById("sizeUp").addEventListener("click",()=>bumpSize(0.05));
 
 const SL={DEAD:10, ROLL:22, TAP_MS:220, TAP_MOVE:14, SWIPE:42};   // px / ms
 const slideEl=document.getElementById("slide");
@@ -1286,16 +1346,18 @@ function togglePause(){
   document.getElementById("pz").style.display=paused?"flex":"none";
   document.getElementById("pauseBtn").textContent=paused?"▶ RESUME":"⏸ PAUSE";
 }
-function select(w){ if(w!=="hex"&&(P.runes[w]||0)<=0) return; P.sel=w; hud(); }
+let booms=[];   // 🔥 v0.26 blast rings
+function select(w){ if(w!=="hex"&&(!runeUnlocked(w)||(P.runes[w]||0)<=0)) return; if(P.doomT>0) return; P.sel=w; hud(); }
 function cycle(d){
-  const order=["hex","ember","lance"]; let i=order.indexOf(P.sel);
-  for(let n=0;n<3;n++){ i=(i+d+3)%3; const w=order[i];
-    if(w==="hex"||(P.runes[w]||0)>0){P.sel=w;hud();return;} }
+  const order=RUNE_ORDER, L=order.length; let i=order.indexOf(P.sel);
+  for(let n=0;n<L;n++){ i=(i+d+L)%L; const w=order[i];
+    if(w==="hex"||(runeUnlocked(w)&&(P.runes[w]||0)>0)){P.sel=w;hud();return;} }
 }
 
 /* ---------------- doors ---------------- */
 function doorAction(){
   if(dead||paused||shopOpen||P.doorCD>0) return;
+  if(P.doomT>0) return;                            // 💀 v0.26: a charging Doom has you rooted
   if(P.hidden){ P.hidden=false;P.door=null;P.doorCD=0.25;
     for(const e of enemies) e.idle=0; puff(P.x,GROUND-20,"#8b85ff",7); return; }
   if(P.pickP>0){ P.pickP=0;P.pickDoor=null; return; }
@@ -1332,8 +1394,8 @@ function rollStash(mult,d){
   led.stash++;
   const r=Math.random()/mult; let txt,col;
   if(r<0.42){ const c=Math.round((3+Math.random()*10)*mult); P.coin+=c; led.earn+=c; txt="🪙 +"+c; col="#ffd166"; }
-  else if(r<0.82){ const n=Math.max(1,Math.round((1+Math.random()*2)*mult));
-    P.runes.ember=(P.runes.ember||0)+n; txt="🔥 +"+n; col="#ff8c42"; }
+  else if(r<0.82||(r<0.95&&!runeUnlocked("lance"))){ const n=Math.max(1,Math.round((1+Math.random()*2)*mult));
+    P.runes.ember=(P.runes.ember||0)+n; txt="🔥 +"+n; col="#ff8c42"; }      // 🔓 v0.26: no Lances before block 8
   else if(r<0.95){ const n=Math.max(1,Math.round(mult));
     P.runes.lance=(P.runes.lance||0)+n; txt="⚡ +"+n; col="#c08bff"; }
   else { if(P.hp<maxHP()){P.hp++;txt="❤️ +1";col="#ff6b8b";}
@@ -1375,12 +1437,14 @@ function renderShop(){
   /* 🩹 MEND and 🧪 POULTICE are deliberately separate purchases.
      The Door is the one safe moment in a run — healing there should be
      limited by your wallet and nothing else. Poultices are the FIELD reserve. */
+  /* 🔮 v0.26: each rune sold by its JOB; Lance and Doom appear once unlocked */
   const defs=[
-    {k:"ember",t:"🔥 EMBER",d:"Heavy, long range. The brute-killer.",c:()=>TUNE.emberCost},
-    {k:"lance",t:"⚡ LANCE",d:"Pierces everything in the line.",c:()=>TUNE.lanceCost},
+    {k:"ember",t:"🔥 "+ARMS.ember.label,d:"Bursts on the first body — hits everyone around it. For crowds.",c:()=>TUNE.emberCost},
+    runeUnlocked("lance")&&{k:"lance",t:"⚡ LANCE",d:"Pierces everything in the line. For rows.",c:()=>TUNE.lanceCost},
+    runeUnlocked("doom")&&{k:"doom",t:"💀 DOOM",d:"Plant your feet and charge it. One target, enormous damage.",c:()=>TUNE.doomCost},
     {k:"mend", t:"🩹 MEND",   d:"One heart back, right here, right now.",c:()=>TUNE.mendCost},
     {k:"pot",  t:"🧪 POTION",d:"Carry it out. Drinking roots you.",c:()=>TUNE.potCost}
-  ];
+  ].filter(Boolean);
   const wrap=document.getElementById("buys"); wrap.innerHTML="";
   for(const def of defs){
     const price=def.c(); const el=document.createElement("div"); el.className="buy";
@@ -1696,6 +1760,23 @@ function step(dt){
 
   if(P.entryT>0){ P.entryT-=dt; if(P.entryT<=0) finishEntry(); }
 
+  /* 💀 v0.26 DOOM — the wind-up comes FIRST (Talon: "you can't just tap it and
+     run… it roots you"). You chose the facing when you started charging; it
+     releases on its own at the end of the charge. */
+  if(P.doomT>0){
+    P.doomT-=dt;
+    if(P.doomT<=0){
+      P.doomT=0;
+      bolts.push({x:P.x+P.doomFace*20,y:GROUND-40,dir:P.doomFace,t:1.8,spd:TUNE.doomSpeed,
+                  dmg:ARMS.doom.dmg,pierce:false,doom:true,maxHits:1,col:ARMS.doom.col,hits:[]});
+      shake=Math.min(1,shake+0.5);
+      if(!SIM) puff(P.x+P.doomFace*20,GROUND-44,"#b06bff",10);
+      if(P.sel==="doom"&&(P.runes.doom||0)<=0) P.sel="hex";
+    }
+  }
+  for(const bm of booms) bm.t-=dt;
+  booms=booms.filter(bm=>bm.t>0);
+
   if(P.potT>0){
     P.potT-=dt;
     if(P.potT<=0){
@@ -1718,7 +1799,7 @@ function step(dt){
       }
     }
   }
-  const busy=P.hidden||P.entryT>0||P.pickP>0||P.potT>0;
+  const busy=P.hidden||P.entryT>0||P.pickP>0||P.potT>0||P.doomT>0;
 
   if(!busy){
     let mv=0;
@@ -1796,16 +1877,22 @@ function step(dt){
         }
         hitEnemy(tgt,arm.dmg,P.face,true,"hex");
       }
-    } else if((P.runes[P.sel]||0)>0){
+    } else if(P.sel==="doom"&&(P.runes.doom||0)>0&&runeUnlocked("doom")){
+      /* 💀 v0.26: start the charge — committed, rooted, facing locked in */
+      P.runes.doom--; led.fired++; led.runeCost+=TUNE.doomCost;
+      P.doomT=TUNE.doomWind; P.doomFace=P.face; P.cd=TUNE.doomWind+arm.cd; P.casting=TUNE.doomWind;
+      if(!SIM) floats.push({x:P.x,y:GROUND-92,txt:"💀 …",col:"#b06bff",t:TUNE.doomWind,vy:-10});
+    } else if(P.sel!=="doom"&&(P.runes[P.sel]||0)>0){
       P.runes[P.sel]--; led.fired++;
-      led.runeCost += (P.sel==="ember"?TUNE.emberCost:TUNE.lanceCost);
+      led.runeCost += runeCost(P.sel);
       P.cd=arm.cd; P.casting=0.14;
-      const maxHits = arm.pierce ? lancePierce() : emberHits();
+      const maxHits = arm.pierce ? lancePierce() : 1;
       /* 🔥 MIRROR EMBER — one cast, both directions. The pincer-breaker. */
       const dirs = (P.sel==="ember"&&upg("mirror")) ? [P.face,-P.face] : [P.face];
       for(const dr of dirs)
         bolts.push({x:P.x+dr*18,y:GROUND-34,dir:dr,t:1.1,
-                    dmg:arm.dmg,pierce:arm.pierce,maxHits,col:arm.col,hits:[]});
+                    dmg:arm.dmg,pierce:arm.pierce,maxHits,col:arm.col,hits:[],
+                    aoe:arm.aoe?emberBlast():0});                  // 🔥 v0.26: Ember bursts
       shake=Math.min(1,shake+0.3);
       puff(P.x+P.face*18,GROUND-50,arm.col,3);
       if((P.runes[P.sel]||0)<=0){
@@ -1825,7 +1912,13 @@ function step(dt){
   const nb=Math.floor(P.maxX/TUNE.blockLen);
   if(nb>blockIdx){
     const oldD=districtFor(blockIdx);
+    const lanceWas=runeUnlocked("lance");
     blockIdx=nb;
+    /* ⚡ v0.26: the first time you ever reach block 8, the Lance unlocks — mid-run */
+    if(!lanceWas&&runeUnlocked("lance")&&!SIM){
+      floats.push({x:P.x,y:GROUND-120,txt:"⚡ LANCE UNLOCKED — find it at The Door",col:"#8fd8ff",t:2.6,vy:-16,big:true});
+      shake=Math.min(1,shake+0.4);
+    }
     const newD=districtFor(blockIdx);
     let nu=null;
     for(const k in ENEMIES) if(ENEMIES[k].from===blockIdx) nu=ENEMIES[k];
@@ -1857,6 +1950,13 @@ function step(dt){
          until 5 blocks later). The fight takes your potions; it gives them back. */
       const had=P.pots; P.pots=Math.max(P.pots,potCap());
       if(!SIM&&P.pots>had) floats.push({x:P.x,y:GROUND-112,txt:"🧪 POTIONS REFILLED",col:"#ff6b8b",t:1.8,vy:-22,big:true});
+      /* 💀 v0.26 — every boss drops a DOOM; the FIRST one ever unlocks it for good */
+      const M=SIM?SIMM:META;
+      if(M){ M.up=M.up||{};
+        if(!((M.up.doomkey)|0)){ M.up.doomkey=1; if(!SIM){ metaSave();
+          floats.push({x:P.x,y:GROUND-140,txt:"💀 DOOM UNLOCKED",col:"#b06bff",t:2.8,vy:-14,big:true}); } } }
+      P.runes.doom=(P.runes.doom||0)+1;
+      if(!SIM) floats.push({x:P.x+30,y:GROUND-90,txt:"💀 +1",col:"#b06bff",t:1.6,vy:-26});
       if(!SIM) hud();
     } else {
       b.guardT=Math.max(0,(b.guardT||0)-dt);
@@ -1911,12 +2011,25 @@ function step(dt){
 
   /* ---- player bolts ---- */
   for(const b of bolts){
-    b.x+=b.dir*700*dt; b.t-=dt;
+    b.x+=b.dir*(b.spd||700)*dt; b.t-=dt;
     for(const e of enemies){
       if(e.hp<=0||b.hits.includes(e)) continue;
       if(Math.abs(e.x-b.x)<e.def.w*0.6+8){
-        b.hits.push(e); puff(b.x,b.y,"#fff",4);
+        /* 🔥 v0.26 EMBER = A BLAST: the first body it touches sets it off, and
+           everyone inside the radius takes the hit — the crowd answer. */
+        if(b.aoe){
+          const cx=e.x;
+          for(const o of enemies){
+            if(o.hp<=0) continue;
+            if(Math.abs(o.x-cx)<=b.aoe+o.def.w*0.5) hitEnemy(o,b.dmg,b.dir,false,"rune");
+          }
+          booms.push({x:cx,y:GROUND-36,r:b.aoe,t:0.35,col:b.col});
+          if(!SIM) puff(cx,GROUND-36,b.col,10);
+          shake=Math.min(1,shake+0.2); b.t=-1; break;
+        }
+        b.hits.push(e); puff(b.x,b.y,b.doom?"#b06bff":"#fff",b.doom?14:4);
         hitEnemy(e,b.dmg,b.dir,false,"rune");
+        if(b.doom&&!SIM) floats.push({x:e.x,y:GROUND-e.def.h-20,txt:"DOOM",col:"#b06bff",t:0.9,vy:-30,big:true});
         if(b.hits.length>=(b.maxHits||1)){ b.t=-1; break; }
       }
     }
@@ -1999,6 +2112,15 @@ function step(dt){
         floats.push({x:P.x,y:GROUND-66,txt:"-"+(e.dmg||e.def.dmg),col:"#ff6b8b",t:0.8,vy:-34});
         if(P.hp<=0) die();
       }
+      if(e.volleyQ>0){                                   // 🎖️ v0.26: the rest of the volley, one beat apart
+        e.volleyT-=dt;
+        if(e.volleyT<=0){
+          ebolts.push({x:e.x+e.facing*16,y:GROUND-34,dir:e.facing,
+                       spd:R.spd,dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
+          e.volleyQ--; e.volleyT=TUNE.volleyGap;
+          if(!SIM) puff(e.x+e.facing*18,GROUND-34,"#ffd9a0",3);
+        }
+      }
       if(e.facing===want){
         if(e.aim>0){
           e.aim-=dt;
@@ -2006,6 +2128,15 @@ function step(dt){
             /* 🎖️ v0.25: the Marshal fires more each phase (1 → 2 → 3) — more danger,
                and more rounds to send home. Every round remembers who fired it. */
             const shots=R.shots+((e.isBoss&&e.def.trait==="advance")?((e.phase||1)-1):0);
+            /* 🎖️ v0.26 — the Marshal's volley is SPACED (TUNE.volleyGap > the hex
+               recharge), so a sharp player can swat every round one by one and
+               Ward just makes it easier. Talon: 1→2→3 rounds vs one swat was a
+               "forced upgrade." Now it's a skill moment. Other guns stay a spread. */
+            if(e.isBoss&&e.def.trait==="advance"&&shots>1){
+              ebolts.push({x:e.x+e.facing*16,y:GROUND-34,dir:e.facing,
+                           spd:R.spd,dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
+              e.volleyQ=shots-1; e.volleyT=TUNE.volleyGap;
+            } else
             for(let s=0;s<shots;s++)
               ebolts.push({x:e.x+e.facing*16,y:GROUND-34-(s-1)*7,dir:e.facing,
                            spd:R.spd*(1+(s-1)*0.06),dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
@@ -2110,7 +2241,7 @@ function killed(e,src){
   floats.push({x:e.x,y:GROUND-e.def.h-6,txt:"😭",col:"#fff",t:0.95,vy:-54,big:true});
   if(c>0) floats.push({x:e.x+16,y:GROUND-e.def.h-22,txt:"+"+c,col:"#ffd166",t:0.9,vy:-38});
   if(Math.random()<runeDropPct()/100){
-    const w=Math.random()<0.78?"ember":"lance";
+    const w=(Math.random()<0.78||!runeUnlocked("lance"))?"ember":"lance";   // 🔓 v0.26
     P.runes[w]=(P.runes[w]||0)+1;
     floats.push({x:e.x-16,y:GROUND-e.def.h-38,txt:ARMS[w].icon+" +1",col:ARMS[w].col,t:1.3,vy:-30});
   }
@@ -2141,7 +2272,7 @@ function die(){
   metaSave();
   const nextGate=TIERS.find(t=>t.gate>META.deepest);
   const rate=led.runeCost?(led.runeKillCoin/led.runeCost).toFixed(2)+"×":"—";
-  const leftover=(P.runes.ember||0)+(P.runes.lance||0);
+  const leftover=(P.runes.ember||0)+(P.runes.lance||0)+(P.runes.doom||0);
   /* 💀 THE HOARD CALLOUT — you cannot see the cost of NOT spending
      unless something says it out loud. */
   let jab="";
@@ -2149,7 +2280,7 @@ function die(){
     const line=HOARD_LINES[(Math.random()*HOARD_LINES.length)|0].replace("{R}",leftover);
     jab=`<div style="margin-top:8px;color:#ffd166;font-style:italic;font-size:12px">
            “${line}”<br><span style="color:#6f6b85;font-style:normal">— left behind:
-           🔥${P.runes.ember||0} · ⚡${P.runes.lance||0} · 🧪${P.pots} · 🪙${P.coin}</span></div>`;
+           🔥${P.runes.ember||0} · ⚡${P.runes.lance||0} · 💀${P.runes.doom||0} · 🧪${P.pots} · 🪙${P.coin}</span></div>`;
   }
   document.getElementById("overRes").innerHTML=
     `<b>${m}m</b> · block <b>${blockIdx+1}</b> · <b>${kills}</b> dropped<br>
@@ -2180,19 +2311,24 @@ function hud(){
   g("sSig",META.sigils); g("sDeep",META.deepest);
   g("sTough","×"+toughHP(blockIdx).toFixed(1));
   g("sDist2",districtFor(blockIdx).name);
-  g("rLance","dmg "+ARMS.lance.dmg+" · pierce "+lancePierce());
-  g("rEmber","dmg "+ARMS.ember.dmg+" · heavy");
-  g("nEmber",P.runes.ember||0); g("nLance",P.runes.lance||0); g("rHex",hexReach()+"px");
+  g("rLance",runeUnlocked("lance")?"dmg "+ARMS.lance.dmg+" · pierce "+lancePierce():"🔒 block "+TUNE.lanceUnlock);
+  g("rEmber","dmg "+ARMS.ember.dmg+" · blast "+emberBlast()+"px");
+  g("rDoom",runeUnlocked("doom")?"dmg "+ARMS.doom.dmg+" · charged":"🔒 beat a boss");
+  g("lEmberName",ARMS.ember.label);
+  g("nEmber",P.runes.ember||0); g("nLance",P.runes.lance||0); g("nDoom",P.runes.doom||0); g("rHex",hexReach()+"px");
   g("nPot",P.pots+"/"+potCap());
   document.getElementById("potChip").classList.toggle("empty",P.pots<=0);
-  /* keep the thumb strip in sync: counts on the buttons, selection highlighted */
-  const pm={hex:"∞",ember:(P.runes.ember||0),lance:(P.runes.lance||0)};
-  ["hex","ember","lance"].forEach(w=>{
+  /* keep the thumb strip in sync: counts on the buttons, selection highlighted.
+     🔒 v0.26: a locked rune shows a lock instead of a count. */
+  const pm={hex:"∞",ember:(P.runes.ember||0),lance:(P.runes.lance||0),doom:(P.runes.doom||0)};
+  RUNE_ORDER.forEach(w=>{
     const b=document.getElementById("p"+w[0].toUpperCase()+w.slice(1));
     if(!b) return;
-    b.textContent=ARMS[w].icon+(w==="hex"?"":" "+pm[w]);
+    const open=runeUnlocked(w);
+    b.textContent=open?ARMS[w].icon+(w==="hex"?"":" "+pm[w]):"🔒";
+    if(w==="ember") b.dataset.label=ARMS.ember.label;
     b.classList.toggle("sel",P.sel===w);
-    b.style.opacity=(w!=="hex"&&(P.runes[w]||0)<=0)?.4:1;
+    b.style.opacity=!open?.3:((w!=="hex"&&(P.runes[w]||0)<=0)?.4:1);
   });
   const pp=document.getElementById("pPot");
   if(pp){ pp.textContent="🧪 "+P.pots; pp.style.opacity=P.pots<=0?.4:1; }
@@ -2385,7 +2521,29 @@ function draw(){
     ctx.globalAlpha=1;
   }
 
+  /* 🔥 v0.26 — blast rings: an Ember/Fireball burst reads as AN AREA, not a dot */
+  for(const bm of booms){
+    const a=Math.max(0,bm.t/0.35), rr=bm.r*(1.15-0.45*a);
+    ctx.save(); ctx.globalAlpha=0.55*a; ctx.strokeStyle=bm.col; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.ellipse(bm.x-cam,bm.y,rr,rr*0.55,0,0,Math.PI*2); ctx.stroke();
+    ctx.globalAlpha=0.18*a; ctx.fillStyle=bm.col; ctx.fill(); ctx.restore();
+  }
+  /* 💀 v0.26 — the Doom charge: a closing ring around the wizard while he's rooted */
+  if(P.doomT>0){
+    const k=1-P.doomT/Math.max(0.01,TUNE.doomWind), px=P.x-cam;
+    ctx.save(); ctx.strokeStyle="#b06bff"; ctx.lineWidth=3; ctx.globalAlpha=0.5+0.5*k;
+    ctx.beginPath(); ctx.arc(px,GROUND-44,44-26*k,0,Math.PI*2); ctx.stroke();
+    ctx.font="bold "+(14+10*k)+"px Verdana"; ctx.textAlign="center"; ctx.fillStyle="#b06bff";
+    ctx.fillText("💀",px+P.doomFace*22,GROUND-50); ctx.restore();
+  }
   for(const b of bolts){
+    if(b.doom){                                        // 💀 a skull, not a spark
+      const px=b.x-cam;
+      ctx.save(); ctx.shadowColor="#b06bff"; ctx.shadowBlur=18;
+      ctx.font="28px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText("💀",px,b.y+Math.sin(b.t*30)*2); ctx.restore();
+      continue;
+    }
     const px=b.x-cam,R=b.pierce?20:16;
     const gg=ctx.createRadialGradient(px,b.y,0,px,b.y,R);
     gg.addColorStop(0,"#fff"); gg.addColorStop(0.4,b.col); gg.addColorStop(1,"rgba(0,0,0,0)");
@@ -2682,7 +2840,7 @@ for(const p of POLICIES){
   const def=["quickstep","draught","ward","quaff","threshold"];
   p.order=p.order.filter(id=>!def.includes(id)).concat(def);
 }
-for(const p of POLICIES) p.order=p.order.concat(["kindling","conduction","deephex","deepcoffer"]);
+for(const p of POLICIES) p.order=p.order.concat(["kindling","conduction","malice","deephex","deepcoffer"]);
 
 /* the bot's between-run shopping trip: greedy down its own priority list,
    respecting the same depth gates the player faces */
@@ -2711,7 +2869,10 @@ function makeBot(pol){
       const take=(cost,fn)=>{ if(P.coin<cost) return false; P.coin-=cost; led.spend+=cost; fn(); return true; };
       while(P.hp<maxHP()   && take(TUNE.mendCost ,()=>P.hp++)) {}
       while(P.pots<potCap() && take(TUNE.potCost,()=>P.pots++)) {}
-      while((P.runes.lance||0)<2 && take(TUNE.lanceCost,()=>P.runes.lance=(P.runes.lance||0)+1)) {}
+      if(runeUnlocked("doom")&&isBossBlock(blockIdx))        // 💀 v0.26: stock Doom for the boss
+        while((P.runes.doom||0)<3 && take(TUNE.doomCost,()=>P.runes.doom=(P.runes.doom||0)+1)) {}
+      if(runeUnlocked("lance"))
+        while((P.runes.lance||0)<2 && take(TUNE.lanceCost,()=>P.runes.lance=(P.runes.lance||0)+1)) {}
       while(take(TUNE.emberCost,()=>P.runes.ember=(P.runes.ember||0)+1)) {}
     },
 
@@ -2760,7 +2921,8 @@ function makeBot(pol){
       if(!swat&&tgt){
         const worth=coinOf(tgt.e.def);
         const crowd=face>0?nR:nL;
-        if(crowd>=3&&(P.runes.lance||0)>0) want="lance";
+        if(tgt.e.isBoss&&(P.runes.doom||0)>0&&runeUnlocked("doom")) want="doom";   // 💀 v0.26
+        else if(crowd>=3&&(P.runes.lance||0)>0&&runeUnlocked("lance")) want="lance";
         else if((P.runes.ember||0)>0 && worth>=this.pol.runeMin
                 && (tgt.d>hexReach()*0.8 || tgt.e.def.stagger===0)) want="ember";
       }
