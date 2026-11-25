@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.26 — Runes</title>
+<title>HexCap v0.27 — Tuning</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -188,11 +188,17 @@
   body.mobile .buy{min-width:0;flex:1 1 0;padding:9px 10px}
   body.mobile .buy .t{font-size:16px} body.mobile .buy .d{font-size:12px}
   body.mobile #shop .res{margin-bottom:6px;line-height:1.5}
+  /* v0.27 — "the door gets covered up by our top stats." On phones the HUD stays
+     on top of every panel, so panels start BELOW it… and The Door drops its own
+     coin/heart line, which the HUD already shows (and the vendor's quote was
+     crowding it). */
+  body.mobile .panel{padding-top:calc(var(--hudH,46px) + 6px)}
+  body.mobile #shop .res{display:none}
   /* v0.26: five buys now. On a SHORT landscape phone, The Door goes compact so every
      BUY button is on screen without scrolling. The boss warning (#vline) stays —
      it's what tells you his trick. */
   @media (max-height:430px){
-    body.mobile #shop{padding:8px 12px}
+    body.mobile #shop{padding:calc(var(--hudH,46px) + 4px) 12px 8px}
     body.mobile #shop h2{font-size:19px;margin:0}
     body.mobile #vline{font-size:12px;margin-bottom:2px;line-height:1.35}
     body.mobile #vwarn{display:none}
@@ -295,7 +301,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.26 — RUNES</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.27 — TUNING</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -804,7 +810,7 @@ const SIGILS=[
      when it shouldn't be"). Same id, so anyone who owned Twin Ember owns this. */
   {id:"twin",    tier:1,icon:"🔥",name:"Fireball?!", max:1,cost:[20],
    step:"your Ember becomes FIREBALL — a much bigger blast",
-   now:lv=>`${TUNE.emberBlast}px → ${TUNE.fireballBlast}px blast`},
+   now:lv=>`${lv?TUNE.fireballBlast:TUNE.emberBlast}px → ${TUNE.fireballBlast}px blast`},
   {id:"deeplance",tier:1,icon:"⚡",name:"Deep Lance",max:2,cost:[16,34],
    step:"+2 lance pierce",      now:lv=>`${lancePierce()} → ${lancePierce()+2} bodies`},
   /* 🛡️ v0.24 — WARD: the Shotgunner stays scary (Talon: "you don't get to swat all
@@ -847,9 +853,12 @@ const SIGILS=[
    step:"+3px hex reach — tiny, but it never stops",
                                 now:lv=>`${hexReach()} → ${hexReach()+3}px`},
   {id:"deepcoffer",tier:3,icon:"🪙",name:"Deep Coffers",max:0,
-   costFn:lv=>Math.ceil(14*Math.pow(1.165,lv)),
-   step:"+20 starting coin — eventually you blast through the early blocks",
-                                now:lv=>`${startCoin()} → ${startCoin()+20} coin`},
+   /* v0.27 — Talon: "going from 6 to 26 coins still doesn't feel like much… 20 coins
+      isn't worth 14 sigils." Now cheap to start (6) and +40 a level: one level is
+      ~6 extra Embers walking out the door, so the first few FEEL like something. */
+   costFn:lv=>Math.ceil(6*Math.pow(1.2,lv)),
+   step:"+40 starting coin — a fistful of embers before the first door",
+                                now:lv=>`${startCoin()} → ${startCoin()+40} coin`},
   /* ⭐ DAMAGE HAD TO BECOME AN INFINITE AXIS TOO.
      Enemy HP scales with depth; rune damage never did. So the Ember's value
      collapsed as HP grew (it used to one-shot a thug) while the Lance held,
@@ -913,7 +922,7 @@ function hexReach(){ return TUNE.hexRange + 25*upg("longhex") + 3*upg("deephex")
 /* 8/level was noise against a 4,000-coin run. 20 also doubles as the SOFT
    version of the banked "skip the early blocks" prestige — a player with 25
    levels has earned the right to blast through blocks they've mastered. */
-function startCoin(){ return TUNE.startCoin + 20*upg("deepcoffer"); }
+function startCoin(){ return TUNE.startCoin + 40*upg("deepcoffer"); }
 function pickSecs(){ return TUNE.pickTime * Math.max(0.2,1-0.35*upg("nimble")); }
 function coinMult(){ return TUNE.coinMult * (1+0.15*upg("scavenger")); }
 function vendEvery(){return Math.max(1,TUNE.vendEvery); }
@@ -1589,7 +1598,7 @@ let last=performance.now();
    app. Now the next frame is booked FIRST, every error is caught, and if you're
    dead the game-over panel is guaranteed to show. The caught message prints on
    that panel so a tester can tell us what happened. */
-let lastGlitch="";
+let lastGlitch="", HUDH=0;
 function glitch(where,e){
   lastGlitch=where+": "+(e&&e.message||e);
   try{ console.error("[HexCap]",where,e); }catch(_){}
@@ -1612,6 +1621,10 @@ function frame(now){
   /* 🙈 v0.22: menus get the whole screen. PAUSE is the exception: the button-size
      control lives there, so the pads stay as a faded, untouchable preview. */
   const menu=!!(dead||shopOpen||sigOpen), pz=!!paused&&!menu;
+  /* 📏 v0.27 — the phone HUD wraps to TWO rows; measure it instead of guessing, so
+     panels and the boss bar always start below it. */
+  if(document.body.classList.contains("mobile")){ const hh=document.getElementById("hud").offsetHeight;
+    if(hh&&hh!==HUDH){ HUDH=hh; document.documentElement.style.setProperty("--hudH",hh+"px"); } }
   if(document.body.classList.contains("menuOpen")!==menu){ document.body.classList.toggle("menuOpen",menu); if(menu) clearInput(); }
   if(document.body.classList.contains("pausedView")!==pz){ document.body.classList.toggle("pausedView",pz); if(pz) clearInput(); }
   if(dead&&!sigOpen){
@@ -2039,6 +2052,12 @@ function step(dt){
   /* ---- enemy bullets ---- */
   for(const b of ebolts){
     b.x+=b.dir*b.spd*dt; b.t-=dt;
+    /* 🔒 v0.27 — "a sniper outside the boss battle can still shoot in." The cage
+       walls stopped BODIES (v0.21) but never BULLETS. Only the boss and his own
+       squad may fire inside the cage; anything else dies on the wall. */
+    if(arena.active&&b.t>0&&b.x>arena.lo&&b.x<arena.hi&&b.owner&&!b.owner.isBoss&&!b.owner.summon){
+      b.t=-1; if(!SIM) puff(b.x<(arena.lo+arena.hi)/2?arena.lo:arena.hi,b.y,"#6f6b85",4); continue;
+    }
     if(!P.hidden&&Math.abs(b.x-P.x)<16&&b.t>0){
       b.t=-1; P.hp-=b.dmg; P.hurtT=0.45; shake=1;
       P.entryT=0;P.entryDoor=null;
@@ -2251,7 +2270,19 @@ function die(){
   /* ⏳ SECOND WIND — once per run, the thing that should have killed you doesn't */
   if(P.wind){
     P.wind=false; P.hp=Math.min(maxHP(),2); P.hurtT=1.4; shake=1;
-    for(const e of enemies) if(Math.abs(e.x-P.x)<320) e.stun=Math.max(e.stun,1.2);
+    /* ⏳ v0.27 — "it reeled them, but I was still getting hit." Stunning them in
+       place left them ON you. Now Second Wind is a shockwave: everything close is
+       THROWN back out to ~240px, stunned longer, and any bullet already in the air
+       near you is snuffed. You get a real breath — not just a delay. */
+    for(const e of enemies){
+      const dx=e.x-P.x; if(Math.abs(dx)>=320) continue;
+      e.stun=Math.max(e.stun,1.8);
+      const s=dx===0?(Math.random()<0.5?-1:1):Math.sign(dx);
+      if(Math.abs(dx)<240) e.x=P.x+s*(240+Math.random()*40);
+      if(arena.active) e.x=Math.max(arena.lo+e.def.w*0.5,Math.min(arena.hi-e.def.w*0.5,e.x));
+      e.hitCD=Math.max(e.hitCD||0,1.2);
+    }
+    for(const b of ebolts) if(Math.abs(b.x-P.x)<360) b.t=-1;
     if(!SIM){
       puff(P.x,GROUND-44,"#c08bff",20);
       floats.push({x:P.x,y:GROUND-96,txt:"NOT YET.",col:"#c08bff",t:1.8,vy:-26,big:true});
@@ -2528,6 +2559,13 @@ function draw(){
     ctx.beginPath(); ctx.ellipse(bm.x-cam,bm.y,rr,rr*0.55,0,0,Math.PI*2); ctx.stroke();
     ctx.globalAlpha=0.18*a; ctx.fillStyle=bm.col; ctx.fill(); ctx.restore();
   }
+  /* ⏳ v0.27 — Second Wind still in your pocket? Wear it. (Talon: "maybe even a
+     little symbol over our head when we have it.") */
+  if(P.wind&&!dead){
+    ctx.save(); ctx.globalAlpha=0.75+0.2*Math.sin(performance.now()/400);
+    ctx.font="15px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("⏳",P.x-cam,GROUND-100); ctx.restore();
+  }
   /* 💀 v0.26 — the Doom charge: a closing ring around the wizard while he's rooted */
   if(P.doomT>0){
     const k=1-P.doomT/Math.max(0.01,TUNE.doomWind), px=P.x-cam;
@@ -2679,7 +2717,7 @@ function draw(){
   /* 💀 BOSS BAR — top of screen, with the name and the rank */
   if(arena.active&&arena.boss&&arena.boss.hp>0){
     const b=arena.boss, frac=b.hp/(b.hpMax||1);
-    const W=Math.min(VW-60,560), X=(VW-W)/2, Y=MOBILE?46:14;     // v0.25: clear the phone HUD
+    const W=Math.min(VW-60,560), X=(VW-W)/2, Y=MOBILE?(HUDH||40)+12:14;   // v0.27: below the MEASURED phone HUD
     ctx.fillStyle="rgba(11,13,20,.82)"; ctx.fillRect(X-8,Y-12,W+16,30);
     ctx.fillStyle="#3a3f55"; ctx.fillRect(X,Y,W,9);
     ctx.fillStyle=frac>0.5?"#ff6b8b":"#ff3d63"; ctx.fillRect(X,Y,W*Math.max(0,frac),9);
@@ -3214,6 +3252,15 @@ function closeSig(){
   if(sigFromDeath&&dead) document.getElementById("over").style.display="flex";
   hud();
 }
+/* v0.27: "8 → 9 hearts" at max reads "current: 9 hearts" — left side's number,
+   right side's unit when the left side has none */
+function sigCurrent(s,lv){
+  const parts=String(s.now(lv)).split("→").map(x=>x.trim());
+  const a=parts[0], b=parts[1]||"";
+  if(/[a-z%]/i.test(a)) return a;
+  const unit=b.replace(/^[+\-]?[\d.,]+\s*/,"");
+  return unit?a+" "+unit:a;
+}
 function renderSig(){
   const nextGate=TIERS.find(t=>t.gate>META.deepest);
   document.getElementById("sigHead").innerHTML=
@@ -3230,7 +3277,10 @@ function renderSig(){
       return `<div class="sig ${!open?'locked':''} ${maxed?'maxed':''}">
         <div class="st"><span>${s.icon} ${open?s.name:"? ? ?"}</span>
           <span class="lv">${inf?("♾️ LV "+lv):(maxed?"MAX":lv+"/"+s.max)}</span></div>
-        <div class="sd">${open?(s.step+(s.now?` <span style="color:#c08bff">(${s.now(lv)})</span>`:"")
+        <div class="sd">${open?(s.step+(s.now?(maxed
+            /* v0.27 — maxed shows where you ARE, not a next step that doesn't exist (Talon) */
+            ? ` <span style="color:#5ec27a">(current: ${sigCurrent(s,lv)})</span>`
+            : ` <span style="color:#c08bff">(${s.now(lv)})</span>`):"")
           +(s.req&&!maxed?` <span style="color:${reqOk?'#5ec27a':'#ff9f68'}">· needs ${sigReqName(s)}</span>`:"")):"locked"}</div>
         <button data-sig="${s.id}" ${afford?"":"disabled"}>
           ${maxed?"COMPLETE":(!open?"REACH BLOCK "+t.gate:(!reqOk?"NEEDS "+sigReqName(s).toUpperCase():"CARVE — 🔮"+price))}</button></div>`;
