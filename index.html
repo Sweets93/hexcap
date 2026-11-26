@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.41 — Cop</title>
+<title>HexCap v0.42 — Shotgunner</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.41 — COP</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.42 — SHOTGUNNER</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -1772,8 +1772,18 @@ function muzzleFlash(c,x,y,r){
     if(i) c.lineTo(px,py); else c.moveTo(px,py); }
   c.closePath(); c.fill(); c.fillStyle="#fff"; c.beginPath(); c.arc(x,y,r*0.32,0,Math.PI*2); c.fill(); c.restore();
 }
+/* v0.42 — the shotgun: trigger grip at (0,0), a LONG barrel FORWARD (−x); muzzle ≈ (-1.42W,-0.03H) */
+function shotgunShape(c,W,H,p){
+  aBoxT(c,0.04*W,-0.05*H,0.42*W,0.1*H,p.woodD,p);                 // wooden stock
+  aBoxT(c,-0.32*W,-0.075*H,0.4*W,0.125*H,p.metalD,p);             // receiver
+  aBoxT(c,-1.4*W,-0.07*H,1.12*W,0.075*H,p.metal,p);               // barrel
+  aBoxT(c,-1.15*W,0.005*H,0.85*W,0.045*H,p.metalD,p);             // magazine tube
+  aBoxT(c,-0.9*W,-0.01*H,0.32*W,0.08*H,p.woodD,p);                // the pump
+}
+const rot2=(v,a)=>[v[0]*Math.cos(a)-v[1]*Math.sin(a),v[0]*Math.sin(a)+v[1]*Math.cos(a)];
 /* v0.40 — things a unit DROPS when it's knocked flat (drawn upright, beside the body) */
 const UNIT_DOWN={
+  gunner(c,W,H,p,k){ c.save(); c.globalAlpha*=k; c.translate(-0.2*W,-0.05*H); c.rotate(0.05); shotgunShape(c,W,H,p); c.restore(); },
   cop(c,W,H,p,k){ c.save(); c.globalAlpha*=k; c.translate(-0.45*W,-0.02*H); c.rotate(0.15); pistolShape(c,W,H,p); c.restore(); },
   runner(c,W,H,p,k){ c.save(); c.globalAlpha*=k; c.translate(-0.3*W,-0.13*W); c.rotate(-Math.PI/2-0.08);
     batShape(c,W,H,0.72*H,p); c.restore(); }
@@ -1998,21 +2008,65 @@ const UNIT_ART={
     if(!down) aFist(c,F[0],F[1],0.13*W,p);                           // …and the hand on the grip
   },
   gunner(c,W,H,p,e,m){
-    aLegs(c,W,H,p,0.34,0.24,0.24,e.bob);
-    aBox(c,0.36*W,-0.76*H,0.3*W,0.36*H,0.06*W,p.skin,p);        // back arm
-    aBox(c,-0.5*W,-0.98*H,1.0*W,0.6*H,0.05*W,p.skin,p);
-    aBox(c,-0.5*W,-0.52*H,1.0*W,0.26*H,0.03*W,p.clothD,p);      // dark vest
-    aBelt(c,-0.52*W,-0.3*H,1.04*W,0.08*H,p,-0.12*W);
-    for(let i=0;i<3;i++){ const sx=(0.06+i*0.13)*W;              // red shells, gold caps, on the belt
-      aBoxT(c,sx,-0.31*H,0.1*W,0.13*H,p.shell,p); aBoxT(c,sx,-0.31*H,0.1*W,0.04*H,p.gold,p); }
-    aBox(c,-0.53*W,-0.99*H,1.06*W,0.16*H,0.03*W,p.red,p);       // bandana
-    c.beginPath(); c.moveTo(0.48*W,-0.92*H); c.lineTo(0.88*W,-1.0*H); c.lineTo(0.78*W,-0.82*H); c.closePath(); aFill(c,p.red,p);
-    aFace(c,-0.12*W,-0.74*H,0.64*W,p,m,true);                    // gritted teeth
-    aBox(c,0.0*W,-0.52*H,0.42*W,0.14*H,0.03*W,p.metalD,p);      // stock
-    aBox(c,-1.2*W,-0.5*H,1.25*W,0.1*H,0.02*W,p.metal,p);        // short heavy barrel
-    aBox(c,-0.85*W,-0.43*H,0.3*W,0.08*H,0.02*W,p.metalD,p);     // pump
-    aFist(c,-0.64*W,-0.42*H,0.13*W,p);                           // front hand on the pump
-    aFist(c,0.1*W,-0.44*H,0.13*W,p);                             // back hand on the grip
+    /* v0.42 — from Talon's SHOTGUNNER SHEET (Art/Sheet - Shotgunner.png): a charcoal cap with a
+       light front panel, EAR PROTECTION (light cups, orange centres), a broad charcoal vest on
+       a stocky body, bare arms, a red SHELL POUCH on the hip, the light ▢ buckle, gritted teeth,
+       a big LONG shotgun (wooden stock + pump) held low across the waist.
+       Poses follow the real gun: READY (low, across the waist) → BRACE (e.aim: raised, level)
+       → BLAST (big flash + heavy kick) → RECOVER. Heavy, sturdy steps like the Thug. One visible
+       arm (to the pump) as one silhouette; the trigger hand is a fist on the grip. Face last. */
+    const down=e.downT!==undefined, hurt=e.flash>0&&!down;
+    const fire=e.fireT>0?e.fireT:0;
+    const aiming=!hurt&&!down&&(e.aim>0||fire>0);
+    const kick=fire>0.15?1:fire/0.15;
+    const walking=!down&&!hurt&&!(e.stun>0)&&!aiming;
+    const dip=walking?Math.abs(Math.sin(e.bob))*0.03*H:0;
+    aLegs(c,W,H,p,0.34,0.26,0.24,walking?e.bob:0);
+    c.save(); c.translate(0,dip);
+    aBox(c,0.3*W,-0.66*H,0.34*W,0.2*H,0.1*W,p.skin,p);             // back-shoulder bump (bare arm)
+    aBox(c,-0.52*W,-0.64*H,1.04*W,0.38*H,0.06*W,p.cloth,p);        // the broad vest
+    aBoxT(c,-0.06*W,-0.62*H,0.12*W,0.3*H,p.clothD,p);               // vest seam
+    aBelt(c,-0.54*W,-0.3*H,1.08*W,0.08*H,p,0.18*W,p.tank);         // ▢ light buckle
+    aBoxT(c,-0.36*W,-0.31*H,0.4*W,0.12*H,p.clothD,p);               // the shell pouch…
+    for(let i=0;i<3;i++){ const sx=(-0.32+i*0.12)*W;                // …three red shells, orange caps
+      aBoxT(c,sx,-0.36*H,0.09*W,0.13*H,p.shell,p); aBoxT(c,sx,-0.36*H,0.09*W,0.035*H,p.accent,p); }
+    aBox(c,-0.42*W,-0.96*H,0.84*W,0.38*H,0.05*W,p.skin,p);         // head
+    aBox(c,-0.46*W,-1.07*H,0.92*W,0.18*H,0.07*H,p.cloth,p);        // cap crown
+    aBoxT(c,-0.4*W,-1.04*H,0.32*W,0.08*H,p.metal,p);                // its light front panel
+    aBox(c,-0.68*W,-0.92*H,0.44*W,0.05*H,0.02*W,p.clothD,p);       // bill, forward
+    aBox(c,0.16*W,-0.87*H,0.24*W,0.2*H,0.07*W,p.metal,p);          // EAR PROTECTION cup…
+    aBoxT(c,0.22*W,-0.82*H,0.12*W,0.1*H,p.accent,p);                // …orange centre
+    // THE SHOTGUN
+    let G,ang;
+    if(hurt){ G=[0.1*W,-0.36*H]; ang=-0.45; }
+    else if(aiming){ G=[0.06*W+0.1*W*kick,-0.6*H]; ang=0.3*kick; }
+    else { G=[0.12*W,-0.42*H]; ang=-0.08; }                          // ready: low, across the waist
+    if(!down){
+      c.save(); c.translate(G[0],G[1]); c.rotate(ang); shotgunShape(c,W,H,p);
+      if(fire>0.16){ muzzleFlash(c,-1.62*W,-0.035*H,0.4*W);         // the BLAST
+        c.save(); c.strokeStyle="#ffd84a"; c.lineWidth=1.4; c.lineCap="round";
+        for(const a of [-0.35,0,0.35]){ c.beginPath(); c.moveTo(-1.8*W,-0.035*H+a*0.2*W); c.lineTo(-2.2*W,-0.035*H+a*0.9*W); c.stroke(); }
+        c.restore(); }
+      c.restore();
+      aFist(c,G[0],G[1]+0.02*H,0.14*W,p);                           // trigger hand on the grip
+    }
+    // the ONE visible arm → the pump hand
+    const PH=(()=>{ const r=rot2([-0.74*W,0.03*H],ang); return [G[0]+r[0],G[1]+r[1]]; })();
+    const SB=[-0.62*W,-0.62*H,0.36*W,0.17*H], S=[-0.44*W,-0.54*H];
+    const E=[(S[0]+PH[0])/2+0.08*W,Math.max(S[1],PH[1])+0.08*H];
+    const shoulder=()=>aRR(c,SB[0],SB[1],SB[2],SB[3],0.08*W);
+    const fore=()=>{ c.beginPath(); c.moveTo(S[0],S[1]); c.lineTo(E[0],E[1]); c.lineTo(PH[0],PH[1]); };
+    c.save(); c.lineJoin="round"; c.lineCap="round";
+    c.strokeStyle=p.ol; c.lineWidth=0.26*W+2.8; fore(); c.stroke();
+    c.lineWidth=Math.max(1.5,H*0.045)*2; shoulder(); c.stroke();
+    c.fillStyle=p.skin; shoulder(); c.fill();
+    c.strokeStyle=p.skin; c.lineWidth=0.26*W; fore(); c.stroke();
+    c.strokeStyle=p.clothD; c.lineCap="butt"; c.beginPath();       // charcoal wristband
+    c.moveTo(PH[0]+(E[0]-PH[0])*0.32,PH[1]+(E[1]-PH[1])*0.32); c.lineTo(PH[0]+(E[0]-PH[0])*0.55,PH[1]+(E[1]-PH[1])*0.55); c.stroke();
+    c.restore();
+    if(!down) aFist(c,PH[0],PH[1],0.15*W,p);
+    aFace(c,-0.14*W,-0.75*H,0.58*W,p,m,true);                       // gritted teeth — drawn LAST
+    c.restore();
   },
   shield(c,W,H,p,e,m){
     aLegs(c,W,H,p,0.28,0.24,0.16,e.bob);
