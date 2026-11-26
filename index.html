@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.40 — Bat Runner</title>
+<title>HexCap v0.41 — Cop</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.40 — BAT RUNNER</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.41 — COP</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -1757,8 +1757,24 @@ function batShape(c,W,H,L,p){
   aFill(c,p.wood,p);
   aBoxT(c,-0.08*W,0.04*H,0.16*W,0.045*H,p.clothD,p);              // the knob
 }
+/* v0.41 — the pistol: grip at (0,0), muzzle pointing FORWARD (−x) at (-0.5W,-0.065H) */
+function pistolShape(c,W,H,p){                                    // chunky, like the sheet (muzzle ≈ (-0.68W,-0.09H))
+  c.save(); c.scale(1.35,1.35);
+  aBoxT(c,-0.02*W,-0.05*H,0.15*W,0.14*H,p.metalD,p);             // grip
+  aBoxT(c,-0.5*W,-0.11*H,0.62*W,0.09*H,p.metal,p);               // slide + barrel
+  aBoxT(c,-0.52*W,-0.1*H,0.06*W,0.065*H,p.metalD,p);             // muzzle
+  c.restore();
+}
+/* the muzzle flash: a little yellow starburst with a white heart */
+function muzzleFlash(c,x,y,r){
+  c.save(); c.fillStyle="#ffd84a"; c.beginPath();
+  for(let i=0;i<16;i++){ const a=i*Math.PI/8, rr=(i%2?0.45:1)*r; const px=x+Math.cos(a)*rr*(a>Math.PI/2&&a<3*Math.PI/2?1.25:0.7), py=y+Math.sin(a)*rr;
+    if(i) c.lineTo(px,py); else c.moveTo(px,py); }
+  c.closePath(); c.fill(); c.fillStyle="#fff"; c.beginPath(); c.arc(x,y,r*0.32,0,Math.PI*2); c.fill(); c.restore();
+}
 /* v0.40 — things a unit DROPS when it's knocked flat (drawn upright, beside the body) */
 const UNIT_DOWN={
+  cop(c,W,H,p,k){ c.save(); c.globalAlpha*=k; c.translate(-0.45*W,-0.02*H); c.rotate(0.15); pistolShape(c,W,H,p); c.restore(); },
   runner(c,W,H,p,k){ c.save(); c.globalAlpha*=k; c.translate(-0.3*W,-0.13*W); c.rotate(-Math.PI/2-0.08);
     batShape(c,W,H,0.72*H,p); c.restore(); }
 };
@@ -1934,20 +1950,52 @@ const UNIT_ART={
     aFist(c,-0.42*W,-0.63*H,0.11*W,p);
   },
   cop(c,W,H,p,e,m){
-    aLegs(c,W,H,p,0.3,0.26,0.17,e.bob);
-    aBox(c,-0.42*W,-0.6*H,0.84*W,0.36*H,0.04*W,p.cloth,p);      // uniform
-    aSq(c,0.14*W,-0.48*H,0.08*W,p);                              // ▢ chest badge
-    aBelt(c,-0.44*W,-0.3*H,0.88*W,0.08*H,p,-0.08*W);
-    aBoxT(c,0.2*W,-0.3*H,0.16*W,0.11*H,p.clothD,p);              // pouch
-    aBox(c,-0.38*W,-0.94*H,0.76*W,0.38*H,0.04*W,p.skin,p);
-    aBox(c,-0.44*W,-1.07*H,0.88*W,0.17*H,0.04*W,p.cloth,p);     // cap
-    aBox(c,-0.68*W,-0.93*H,0.52*W,0.06*H,0.02*W,p.clothD,p);    // brim, pointing forward
-    aSq(c,-0.04*W,-0.99*H,0.09*W,p);                             // ▢ cap badge
-    aFace(c,-0.1*W,-0.76*H,0.56*W,p,m);
-    aBox(c,-0.86*W,-0.53*H,0.5*W,0.1*H,0.03*W,p.clothD,p);      // arm out
-    aBox(c,-1.28*W,-0.58*H,0.44*W,0.11*H,0.02*W,p.metal,p);     // pistol
-    aBox(c,-0.98*W,-0.5*H,0.12*W,0.13*H,0.02*W,p.metalD,p);
-    aFist(c,-0.86*W,-0.49*H,0.11*W,p);
+    /* v0.41 — from Talon's COP SHEET (Art/Sheet - Cop.png): a charcoal peaked cap with a light
+       ▢ badge, a uniform with a collar + light shoulder patch + an orange ▢ chest badge, a belt
+       with the light buckle and a pouch, a gray pistol. Poses follow the real gun:
+       READY (walking, pistol low at the chest) → AIM (e.aim: arm out, two hands, level at the
+       bullet's height) → FIRE (muzzle flash + kick) → RECOVER → back to ready.
+       Arms per the v0.39 rule: one visible arm as one silhouette; the support hand is a tucked
+       fist that only appears when he aims. The pistol drops beside him when he falls. */
+    const down=e.downT!==undefined, hurt=e.flash>0&&!down;
+    const fire=e.fireT>0?e.fireT:0;
+    const aiming=!hurt&&!down&&(e.aim>0||fire>0);
+    const kick=fire>0.15?1:fire/0.15;                                // FIRE (1) → RECOVER (→0)
+    aLegs(c,W,H,p,0.3,0.28,0.18,e.bob);
+    // uniform, belt, pouch, shoulder patch, collar, ▢ chest badge
+    aBox(c,-0.44*W,-0.6*H,0.88*W,0.34*H,0.05*W,p.cloth,p);
+    aBoxT(c,0.18*W,-0.6*H,0.22*W,0.08*H,p.metal,p);                  // shoulder patch
+    c.beginPath(); c.moveTo(-0.22*W,-0.6*H); c.lineTo(-0.06*W,-0.52*H); c.lineTo(0.06*W,-0.6*H); c.closePath(); aFill(c,p.clothD,p);   // collar
+    aSq(c,0.12*W,-0.48*H,0.08*W,p,p.accent,p.tank);                   // ▢ chest badge (orange, light rim)
+    aBelt(c,-0.46*W,-0.29*H,0.92*W,0.08*H,p,-0.06*W,p.tank);
+    aBoxT(c,0.2*W,-0.3*H,0.16*W,0.12*H,p.clothD,p);                  // pouch
+    // head + peaked cap + ▢ cap badge
+    aBox(c,-0.38*W,-0.92*H,0.76*W,0.38*H,0.05*W,p.skin,p);
+    aBox(c,-0.5*W,-1.1*H,1.0*W,0.17*H,0.08*H,p.cloth,p);             // crown
+    aBox(c,-0.42*W,-0.96*H,0.84*W,0.075*H,0.02*W,p.clothD,p);        // band
+    aBox(c,-0.68*W,-0.91*H,0.52*W,0.05*H,0.02*W,p.clothD,p);         // bill, forward
+    aSq(c,-0.08*W,-1.02*H,0.08*W,p,p.metal,p.tank);                  // ▢ cap badge
+    aFace(c,-0.1*W,-0.74*H,0.56*W,p,m);
+    // THE GUN ARM
+    let F,ang;
+    if(hurt){ F=[-0.42*W,-0.36*H]; ang=-0.9; }
+    else if(aiming){ F=[-0.74*W+0.08*W*kick,-0.7*H]; ang=0.35*kick; }
+    else { F=[-0.5*W,-0.56*H]; ang=-0.12; }                          // ready: up at the chest, pointing forward
+    if(aiming) aFist(c,F[0]+0.05*W,F[1]+0.07*H,0.13*W,p);           // support hand (far), tucked under
+    if(!down){ c.save(); c.translate(F[0],F[1]); c.rotate(ang); pistolShape(c,W,H,p);
+      if(fire>0.17) muzzleFlash(c,-0.8*W,-0.09*H,0.24*W);
+      c.restore(); }
+    const SB=[-0.52*W,-0.6*H,0.34*W,0.17*H], S=[-0.34*W,-0.52*H];
+    const E=aiming?[(S[0]+F[0])/2,(S[1]+F[1])/2+0.03*H]:[-0.44*W,-0.36*H];
+    const shoulder=()=>aRR(c,SB[0],SB[1],SB[2],SB[3],0.08*W);
+    const fore=()=>{ c.beginPath(); c.moveTo(S[0],S[1]); c.lineTo(E[0],E[1]); c.lineTo(F[0],F[1]); };
+    c.save(); c.lineJoin="round"; c.lineCap="round";
+    c.strokeStyle=p.ol; c.lineWidth=0.26*W+2.8; fore(); c.stroke();
+    c.lineWidth=Math.max(1.5,H*0.045)*2; shoulder(); c.stroke();
+    c.fillStyle=p.cloth; shoulder(); c.fill();                       // uniform sleeve…
+    c.strokeStyle=p.cloth; c.lineWidth=0.26*W; fore(); c.stroke();
+    c.restore();
+    if(!down) aFist(c,F[0],F[1],0.13*W,p);                           // …and the hand on the grip
   },
   gunner(c,W,H,p,e,m){
     aLegs(c,W,H,p,0.34,0.24,0.24,e.bob);
@@ -2814,6 +2862,7 @@ function step(dt){
     }
     e.flash=Math.max(0,e.flash-dt); e.hitCD=Math.max(0,e.hitCD-dt);
     if(e.atkT>0) e.atkT=Math.max(0,e.atkT-dt);
+    if(e.fireT>0) e.fireT=Math.max(0,e.fireT-dt);                // 🎨 v0.41: muzzle flash + recoil (looks only)
     e.stun=Math.max(0,e.stun-dt); e.bob+=dt*6;
     if(e.laneCD>0) e.laneCD-=dt;
     if(e.turnCD>0) e.turnCD-=dt;
@@ -2892,6 +2941,7 @@ function step(dt){
               ebolts.push({x:e.x+e.facing*16,y:GROUND-34-(s-1)*7,dir:e.facing,
                            spd:R.spd*(1+(s-1)*0.06),dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
             e.reload=R.cool; shake=Math.min(1,shake+0.15); sfxAt("eshot",e.x);
+            e.fireT=0.25;                                  // 🎨 v0.41: the art's FIRE → RECOVER beat (looks only)
             puff(e.x+e.facing*18,GROUND-34,"#ffd9a0",4);
           }
         } else {
