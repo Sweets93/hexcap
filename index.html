@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.36 — Mob</title>
+<title>HexCap v0.37 — Thug</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.36 — MOB</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.37 — THUG</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -1728,6 +1728,27 @@ function aBelt(c,x,y,w,h,p,bx,outer){
   c.save(); c.lineWidth=Math.max(1,h*0.3); aBox(c,x,y,w,h,h*0.2,p.clothD,p); c.restore();
   aSq(c,bx,y+h/2,h*0.78,p,null,outer);
 }
+/* v0.37 — a JOINTED arm: shoulder → elbow → fist as one blocky outlined stroke, with a
+   charcoal wristband on the last stretch. The guard and the punch are the same arm, so a
+   swing reads as the arm straightening — not a fist teleporting. */
+function aArm(c,pts,w,p,fill){
+  c.save(); c.lineJoin="bevel"; c.lineCap="square";               // bevel: a blocky elbow, no spike
+  const path=()=>{ c.beginPath(); c.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) c.lineTo(pts[i][0],pts[i][1]); };
+  c.strokeStyle=p.ol; c.lineWidth=w+2.6; path(); c.stroke();
+  c.strokeStyle=fill||p.skin; c.lineWidth=w; path(); c.stroke();
+  const [ex,ey]=pts[pts.length-2], [fx,fy]=pts[pts.length-1];      // the wristband: clear of the fist
+  c.strokeStyle=p.clothD; c.lineCap="butt"; c.beginPath();
+  c.moveTo(fx+(ex-fx)*0.5,fy+(ey-fy)*0.5); c.lineTo(fx+(ex-fx)*0.74,fy+(ey-fy)*0.74); c.stroke();
+  c.restore();
+}
+/* the sheet's yellow impact burst, ahead of a punching fist */
+function aBurst(c,fx,fy,W){
+  c.save(); c.strokeStyle="#ffd84a"; c.lineWidth=1.6; c.lineCap="round";
+  for(const [x1,y1,x2,y2] of [[-0.3,-0.3,-0.52,-0.58],[-0.34,0,-0.64,0],[-0.3,0.3,-0.52,0.58]]){
+    c.beginPath(); c.moveTo(fx+x1*W,fy+y1*W); c.lineTo(fx+x2*W,fy+y2*W); c.stroke(); }
+  c.restore();
+}
+const lerp2=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
 /* small detail boxes need a thinner outline than bodies */
 function aBoxT(c,x,y,w,h,fill,p){ c.save(); c.lineWidth=1; aBox(c,x,y,w,h,Math.min(w,h)*0.15,fill,p); c.restore(); }
 /* each painter draws in a frame where (0,0) = the unit's feet, -y is up, front = -x */
@@ -1766,22 +1787,28 @@ const UNIT_ART={
     }
   },
   thug(c,W,H,p,e,m){
-    /* tall block, flat-top, white tank. The guard fist is UP HIGH and out front — nowhere near
-       the mouth (v0.31's "pipe") — and the punch drives it forward and down. */
-    const a=e._atk||0;
-    aLegs(c,W,H,p,0.3,0.26,0.18,e.bob);
-    aFist(c,0.6*W,-0.42*H,0.18*W,p);                              // back fist, low
-    aBoxT(c,0.44*W,-0.33*H,0.32*W,0.07*H,p.clothD,p);             // its wristband
-    aBox(c,-0.42*W,-1.0*H,0.84*W,0.76*H,0.05*W,p.skin,p);
-    aBox(c,-0.42*W,-0.5*H,0.84*W,0.26*H,0.03*W,p.tank,p);        // white tank top
-    aBelt(c,-0.44*W,-0.29*H,0.88*W,0.08*H,p,-0.1*W);
-    aBox(c,-0.44*W,-1.07*H,0.88*W,0.15*H,0.03*W,p.hair,p);       // flat-top
+    /* v0.37 — from Talon's THUG SHEET (Art/Sheet - Thug.png): a tall head under a charcoal
+       flat-top, a white tank with a scoop neck, BIG bare arms in a boxer's guard (jointed —
+       shoulder, elbow, fist) with charcoal wristbands, the light ▢ buckle. The front arm
+       straightens into the PUNCH, with the yellow burst. */
+    const a=e._atk||0, aw=0.3*W;
+    if(e.downT===undefined&&!(e.flash>0)) c.rotate(-0.04);         // leaning in
+    aLegs(c,W,H,p,0.32,0.28,0.2,e.bob);
+    aArm(c,[[0.3*W,-0.55*H],[0.5*W,-0.3*H],[0.64*W,-0.6*H]],aw,p);    // back arm: elbow DOWN by the belt, fist up
+    aFist(c,0.64*W,-0.62*H,0.25*W,p);
+    aBox(c,-0.46*W,-0.58*H,0.92*W,0.34*H,0.06*W,p.tank,p);       // the white tank
+    c.beginPath(); c.moveTo(-0.3*W,-0.58*H); c.quadraticCurveTo(-0.08*W,-0.45*H,0.14*W,-0.58*H); c.closePath();
+    aFill(c,p.skin,p);                                            // its scoop neck
+    aBelt(c,-0.48*W,-0.27*H,0.96*W,0.08*H,p,-0.06*W,p.tank);     // ▢ the light buckle
+    aBox(c,-0.4*W,-0.98*H,0.8*W,0.44*H,0.05*W,p.skin,p);         // the tall head
+    aBox(c,-0.45*W,-1.07*H,0.9*W,0.17*H,0.04*W,p.clothD,p);      // charcoal flat-top
     aFace(c,-0.1*W,-0.76*H,0.66*W,p,m);
-    const fx=-0.86*W-0.5*W*a, fy=-0.84*H+0.3*H*a;
-    aBox(c,fx-0.13*W,fy+0.27*H,-0.34*W-(fx-0.13*W),0.11*H,0.04*W,p.skin,p);   // upper arm: elbow → body (an L-shaped boxer's guard)
-    aBox(c,fx-0.13*W,fy,0.26*W,0.38*H,0.04*W,p.skin,p);          // the raised forearm (so it's an ARM, not a floating sign)
-    aBoxT(c,fx-0.17*W,fy+0.19*W,0.34*W,0.07*H,p.clothD,p);       // wristband under the fist
-    aFist(c,fx,fy,0.2*W,p);
+    const S=[-0.34*W,-0.55*H];                                    // front arm: a V-shaped guard → PUNCH
+    const E=lerp2([-0.66*W,-0.3*H],[-0.95*W,-0.53*H],a);
+    const F=lerp2([-0.88*W,-0.62*H],[-1.45*W,-0.58*H],a);
+    aArm(c,[S,E,F],aw,p);
+    aFist(c,F[0],F[1],0.26*W,p);
+    if(a>0.45) aBurst(c,F[0],F[1],W);
   },
   runner(c,W,H,p,e,m){
     c.save(); c.globalAlpha*=0.55; c.strokeStyle=p.wood; c.lineWidth=Math.max(1,H*0.035); c.lineCap="round";
