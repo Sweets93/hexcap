@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.32 — Art Fixes</title>
+<title>HexCap v0.33 — Hex Wizard</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.32 — ART FIXES</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.33 — HEX WIZARD</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -1318,7 +1318,7 @@ const slideUp=e=>{
     else if(dt<SL.TAP_MS&&slid.max<SL.TAP_MOVE&&!dead&&!paused&&!shopOpen&&!slideBusy()){
       const r=slideEl.getBoundingClientRect();
       P.face = (e.clientX < r.left+r.width/2) ? -1 : 1;                  // 👆 turn in place
-      puff(P.x+P.face*21,GROUND-57,"#8b85ff",3);
+      puff(P.x+P.face*22,GROUND-50,"#8b85ff",3);
     }
   }
   slideEnd();
@@ -1851,15 +1851,18 @@ function drawUnitArt(e,px,by){
   return true;
 }
 /* ==========================================================
-   🧙 v0.31 ART PASS 1 · SHEET A — THE WIZARD
-   From Talon's reference (Art/Sheet A - Wizard (color).png). Five poses, all
-   from ONE drawing + transforms: stand · walk (stride + motion lines) · cast
-   (staff thrust, angry face, orb flare) · hurt (lean back, > <, "!!") · DOOM
-   charge (staff overhead, skull gathering, the grin). Drawn facing RIGHT like
-   the sheet. The orb keeps the old tell: it glows the ARMED weapon's colour.
+   🧙 v0.33 THE HEX WIZARD — the face of HexCap
+   From Talon's sheet (Art/Sheet A2 - Hex Wizard (color).png), built in code.
+   His signature is the HEXAGON: the buckle on his CAP (HexCap!), the brooch on
+   his scarf, the jewel on his staff. Face hidden in shadow under a huge brim;
+   all expression lives in two glowing eyes ( ▮▮ · > < · ^ ^ ). Chibi build:
+   big hat, short wide robe. Five poses from one drawing + transforms: stand ·
+   walk · cast · hurt · DOOM charge. Drawn facing RIGHT like the sheet. The
+   jewel keeps the old tell: it glows the ARMED weapon's colour.
    ========================================================== */
-const WIZ={robe:"#6b46c9",hat:"#8c5ee6",hatD:"#6a44c4",skin:"#f6dcc0",wood:"#e2a54e",
-  ol:"#1b1330",boot:"#3e2766",mouth:"#c2324a",gold:"#f2c14e"};
+const WIZ={hat:"#9a46cf",hatD:"#6f2a9e",robe:"#7d33b6",robeD:"#5a2088",scarf:"#b058dd",scarfD:"#8a3cb4",
+  gold:"#f5b83a",gem:"#c66bff",void:"#130a20",eye:"#d4f8ff",eyeG:"#6fe3ff",
+  skin:"#f3c79b",wood:"#8e5632",boot:"#3a1d5c",ol:"#1a0f2a",yel:"#f7c948"};
 function wizPose(){
   if(P.doomT>0) return "doom";
   if(P.hurtT>0.2) return "hurt";
@@ -1867,75 +1870,114 @@ function wizPose(){
   if(P.mv) return "walk";
   return "stand";
 }
+/* the hexagon — flat top, like his buckle */
+function hexPath(c,x,y,r){
+  c.beginPath();
+  for(let i=0;i<6;i++){ const a=i*Math.PI/3, px=x+r*Math.cos(a), py=y+r*Math.sin(a); if(i) c.lineTo(px,py); else c.moveTo(px,py); }
+  c.closePath();
+}
+/* gold hexagon + purple gem: the buckle and the brooch */
+function hexGem(c,x,y,r,o){
+  hexPath(c,x,y,r); c.fillStyle=o.gold; c.fill(); c.strokeStyle=o.ol; c.lineWidth=1.7; c.stroke();
+  hexPath(c,x,y,r*0.55); c.fillStyle=o.gem; c.fill(); c.lineWidth=1; c.stroke();
+  c.fillStyle="rgba(255,255,255,.8)"; c.fillRect(x-r*0.28,y-r*0.32,r*0.24,r*0.24);
+}
 function drawWizard(ppx){
-  const c=ctx, o=WIZ, pose=wizPose(), orbCol=ARMS[P.sel].col;
-  const line=(x1,y1,x2,y2,w,col)=>{ c.strokeStyle=o.ol; c.lineWidth=w+2.4; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
-                                    c.strokeStyle=col; c.lineWidth=w; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); };
-  const blob=(x,y,r,col)=>{ c.fillStyle=col; c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill(); c.strokeStyle=o.ol; c.lineWidth=2; c.stroke(); };
+  const c=ctx, o=WIZ, pose=wizPose(), orbCol=ARMS[P.sel].col, walk=pose==="walk";
+  /* fill → optional shading clipped inside → outline on top (so shading never eats the line) */
+  const shape=(path,fill,shade,lw)=>{ path(); c.fillStyle=fill; c.fill();
+    if(shade){ c.save(); path(); c.clip(); shade(); c.restore(); }
+    path(); c.strokeStyle=o.ol; c.lineWidth=lw||2.2; c.stroke(); };
+  const dot=(x,y,r,col)=>{ c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle=col; c.fill(); c.strokeStyle=o.ol; c.lineWidth=1.6; c.stroke(); };
+  const sleeve=(x1,y1,x2,y2)=>{ c.strokeStyle=o.ol; c.lineWidth=8; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+    c.strokeStyle=o.robe; c.lineWidth=5; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); };
   c.save(); c.translate(ppx,GROUND); if(P.face<0) c.scale(-1,1);
   c.lineJoin="round"; c.lineCap="round";
-  if(pose==="walk"){                                                // motion lines, like the sheet
-    c.save(); c.globalAlpha*=0.6; c.strokeStyle=o.gold; c.lineWidth=2;
-    for(let i=0;i<3;i++){ const y=-12-i*6; c.beginPath(); c.moveTo(-20-i*3,y); c.lineTo(-32-i*3,y); c.stroke(); }
+  if(walk){                                                          // motion lines, like the sheet
+    c.save(); c.globalAlpha*=0.75; c.strokeStyle=o.gold; c.lineWidth=2.2;
+    for(let i=0;i<3;i++){ const y=-10-i*6; c.beginPath(); c.moveTo(-26-i*2,y); c.lineTo(-37-i*2,y); c.stroke(); }
     c.restore();
   }
-  const st=pose==="walk"?Math.sin(P.x/9)*5:((pose==="cast"||pose==="doom")?4:0);
-  for(const bx of [-6-st,6+st]){ aRR(c,bx-5,-5,10,5,2.5); c.fillStyle=o.boot; c.fill(); c.strokeStyle=o.ol; c.lineWidth=2; c.stroke(); }
-  c.save(); c.rotate(pose==="cast"?0.1:pose==="hurt"?-0.16:pose==="walk"?0.05:0);
-  c.beginPath(); c.moveTo(-9,-34); c.lineTo(9,-34); c.lineTo(15,-3); c.lineTo(-15,-3); c.closePath();   // robe
-  c.fillStyle=o.robe; c.fill(); c.strokeStyle=o.ol; c.lineWidth=2.2; c.stroke();
-  /* staff + orb, by pose */
-  let sx1,sy1,sx2,sy2,hx,hy,ox,oy,orbR,glowR;
-  if(pose==="cast"){ sx1=4;sy1=-24; sx2=30;sy2=-30; hx=7;hy=-25; ox=33;oy=-31; orbR=6.5; glowR=20; }
-  else if(pose==="doom"){ sx1=14;sy1=-26; sx2=19;sy2=-75; hx=15.5;hy=-44; ox=19.5;oy=-79; orbR=5.5; glowR=14; }
-  /* v0.32 — Talon: "the light is showing through his hat." The staff was BEHIND the hat
-     with the orb painted in FRONT. Now it's held forward, angled out, drawn in front. */
-  else { sx1=11;sy1=-2; sx2=21;sy2=-54; hx=15.2;hy=-24; ox=21.5;oy=-57; orbR=5; glowR=10; }
-  blob(3,-38,9.5,o.skin);                                           // head
-  /* the hat: one wide cone pulled down low over the head, no band — like the sheet */
-  c.beginPath(); c.moveTo(-16,-41); c.lineTo(-1,-80); c.lineTo(22,-45.5); c.closePath();
-  c.fillStyle=o.hat; c.fill(); c.strokeStyle=o.ol; c.lineWidth=2.2; c.stroke();
-  /* the face — drawn after the hat so the brows can bite into the brim */
-  c.fillStyle=o.ol; c.strokeStyle=o.ol;
-  if(pose==="hurt"){
-    c.lineWidth=1.8; c.beginPath();
-    c.moveTo(0.5,-41.5); c.lineTo(3.5,-39.5); c.lineTo(0.5,-37.5); c.moveTo(10.5,-41.5); c.lineTo(7.5,-39.5); c.lineTo(10.5,-37.5); c.stroke();
-    c.fillStyle=o.mouth; c.beginPath(); c.arc(5.5,-33.5,1.8,0,Math.PI*2); c.fill();
-  } else {
-    const mad=pose==="cast"||pose==="doom", ey=mad?-41:-42, eh=mad?3.4:4.2;
-    aRR(c,3,ey,2.2,eh,1.1); c.fill(); aRR(c,8,ey,2.2,eh,1.1); c.fill();
-    if(mad){                                                        // the wedge brows
-      c.lineWidth=2.3; c.beginPath(); c.moveTo(1.3,-44.2); c.lineTo(5.4,-42.2); c.moveTo(12,-44.6); c.lineTo(7.8,-42.4); c.stroke();
-      c.fillStyle=o.mouth; c.beginPath();
-      if(pose==="doom"){ c.arc(6.5,-35,3.2,0,Math.PI); c.closePath(); }      // the GRIN
-      else { c.moveTo(3.5,-35.5); c.lineTo(9.5,-35.5); c.lineTo(8.5,-32); c.lineTo(4.5,-32); c.closePath(); }   // shouting
-      c.fill(); c.lineWidth=1; c.stroke();
-    }
-  }
-  line(sx1,sy1,sx2,sy2,3.2,o.wood);                                 // the staff — in FRONT of him now
-  blob(hx,hy,3.4,o.skin);                                           // hand on the staff
-  /* the orb — glows the colour of whatever's armed */
-  const g=c.createRadialGradient(ox,oy,0,ox,oy,glowR);
-  g.addColorStop(0,"rgba(255,255,255,.95)"); g.addColorStop(0.35,orbCol); g.addColorStop(1,"rgba(0,0,0,0)");
-  c.fillStyle=g; c.beginPath(); c.arc(ox,oy,glowR,0,Math.PI*2); c.fill();
-  c.fillStyle="#fff"; c.beginPath(); c.arc(ox,oy,orbR*0.55,0,Math.PI*2); c.fill();
-  if(pose==="doom"){                                                // the skull gathering above the orb
-    const k=1-P.doomT/Math.max(0.01,TUNE.doomWind);
-    const s=0.55+0.55*k, sy=oy-13-9*k;                              // a purple skull, drawn (not an emoji)
-    c.save(); c.globalAlpha*=0.35+0.65*k; c.translate(ox,sy); c.scale(s,s);
-    c.shadowColor="#b06bff"; c.shadowBlur=14; c.fillStyle="#c98cff";
-    c.beginPath(); c.arc(0,-2,10,0,Math.PI*2); c.fill();
-    aRR(c,-6,4,12,7,2.5); c.fill(); c.shadowBlur=0;
-    c.fillStyle="#3a1a66";
-    c.beginPath(); c.arc(-4,-2,3,0,Math.PI*2); c.arc(4,-2,3,0,Math.PI*2); c.fill();
-    c.beginPath(); c.moveTo(0,2); c.lineTo(-1.5,5); c.lineTo(1.5,5); c.closePath(); c.fill();
-    c.fillRect(-2.6,8,1.3,3); c.fillRect(1.3,8,1.3,3);
+  if(pose==="hurt"){                                                 // the wobble behind him
+    c.save(); c.strokeStyle=o.yel; c.lineWidth=2;
+    c.beginPath(); c.arc(-17,-18,8,2.5,3.7); c.stroke(); c.beginPath(); c.arc(-17,-18,13,2.6,3.6); c.stroke();
     c.restore();
   }
+  /* boots */
+  const st=walk?Math.sin(P.x/9)*5:((pose==="cast"||pose==="doom")?4:0);
+  for(const bx of [-7-st,7+st]){ aRR(c,bx-6,-6,12,6,2.4); c.fillStyle=o.boot; c.fill(); c.strokeStyle=o.ol; c.lineWidth=1.8; c.stroke(); }
+  c.save(); c.rotate(pose==="cast"?0.08:pose==="hurt"?-0.14:walk?0.05:0);
+  /* the robe: a short WIDE bell, thick gold hem, gold front trim; the hem flares back when he walks */
+  const fl=walk?4:0;
+  const robe=()=>{ c.beginPath(); c.moveTo(-11,-31); c.lineTo(11,-31); c.quadraticCurveTo(16,-17,18-fl*0.3,-4.5);
+    c.lineTo(-19-fl,-4.5); c.quadraticCurveTo(-16,-17,-11,-31); c.closePath(); };
+  shape(robe,o.robe,()=>{ c.fillStyle=o.robeD; c.fillRect(-28,-15,50,12); c.fillRect(-28,-34,13,34); });
+  shape(()=>{ c.beginPath(); c.moveTo(-19-fl,-4.5); c.lineTo(18-fl*0.3,-4.5); c.lineTo(17.2,-9.5); c.lineTo(-18-fl,-9.5); c.closePath(); },o.gold,null,1.6);
+  c.strokeStyle=o.ol; c.lineWidth=4.2; c.beginPath(); c.moveTo(3.5,-24); c.lineTo(4.5,-10); c.stroke();
+  c.strokeStyle=o.gold; c.lineWidth=2.4; c.beginPath(); c.moveTo(3.5,-24); c.lineTo(4.5,-10); c.stroke();
+  /* the face: nothing but shadow under the brim */
+  aRR(c,-10,-51,25,21,8); c.fillStyle=o.void; c.fill();
+  /* the chunky scarf + its tail */
+  shape(()=>aRR(c,-15,-35,30,8.5,4.2),o.scarf,()=>{ c.fillStyle=o.scarfD; c.fillRect(-16,-30,32,4); },2);
+  hexGem(c,3.5,-28,5.2,o);                                          // ⬡ the BROOCH
+  if(pose==="stand"||pose==="walk"||pose==="hurt") dot(-15,-14,2.8,o.skin);   // back hand at his side
+  if(pose==="doom") dot(-16,-20,2.8,o.skin);                        // hand on the hip
+  /* the hat: BIG. A floppy crown that bends back and flops over, a huge brim, gold band */
+  shape(()=>{ c.beginPath(); c.moveTo(15,-53); c.quadraticCurveTo(10,-73,-3,-79); c.quadraticCurveTo(-18,-84,-27,-67);
+    c.quadraticCurveTo(-19,-70,-15,-62); c.lineTo(-15,-53); c.closePath(); },
+    o.hat,()=>{ c.fillStyle=o.hatD; c.fillRect(-34,-90,27,40); });
+  shape(()=>{ c.beginPath(); c.moveTo(-15.5,-53); c.lineTo(15.8,-53); c.lineTo(14.2,-59.5); c.lineTo(-14.8,-59.5); c.closePath(); },o.gold,null,1.6);
+  /* the BRIM: a big wide disc seen at an angle, swept back, drooping over his face at the front */
+  shape(()=>{ c.beginPath(); c.moveTo(-30,-47); c.quadraticCurveTo(0,-61,26,-51); c.quadraticCurveTo(33.5,-47,28,-38);
+    c.quadraticCurveTo(4,-50,-27,-42); c.quadraticCurveTo(-32.5,-44,-30,-47); c.closePath(); },
+    o.hat,()=>{ c.fillStyle=o.hatD; c.fillRect(-36,-58,16,22); });
+  c.strokeStyle=o.gold; c.lineWidth=2.6; c.beginPath(); c.moveTo(-26.5,-43.9); c.quadraticCurveTo(4,-51.8,27,-40.2); c.stroke();
+  hexGem(c,4,-59,6.8,o);                                            // ⬡ the BUCKLE on the CAP
+  /* the eyes — the whole face */
+  c.save(); c.shadowColor=o.eyeG; c.shadowBlur=6; c.strokeStyle=o.eye; c.fillStyle=o.eye; c.lineWidth=2.1;
+  if(pose==="cast"||pose==="hurt"){                                 // > <
+    c.beginPath(); c.moveTo(0,-43.5); c.lineTo(4,-40.3); c.lineTo(0,-37);
+    c.moveTo(12.5,-43.5); c.lineTo(8.5,-40.3); c.lineTo(12.5,-37); c.stroke();
+  } else if(pose==="doom"){                                         // ^ ^  (spaced so they never merge)
+    c.beginPath(); c.moveTo(-0.5,-38); c.lineTo(2.2,-41.6); c.lineTo(4.9,-38);
+    c.moveTo(8.1,-38); c.lineTo(10.8,-41.6); c.lineTo(13.5,-38); c.stroke();
+  } else { aRR(c,1.5,-44,2.9,6.6,1.3); c.fill(); aRR(c,8.6,-44,2.9,6.6,1.3); c.fill(); }
+  c.restore();
+  /* the staff, by pose — the HEX JEWEL held in a gold claw */
+  let sx1,sy1,sx2,sy2,hx,hy,jx,jy,jr,glowR;
+  if(pose==="cast"){ sx1=6;sy1=-25; sx2=31;sy2=-30; hx=14;hy=-26.6; jx=36;jy=-31; jr=7; glowR=23; }
+  else if(pose==="doom"){ sx1=21;sy1=-24; sx2=23.5;sy2=-74; hx=22.4;hy=-47; jx=23.8;jy=-80; jr=6.5; glowR=17; }   // held out to the side so the arm never covers the grin
+  else { sx1=15;sy1=-1; sx2=21;sy2=-44; hx=18;hy=-20; jx=22;jy=-50; jr=6; glowR=14; }
+  if(pose==="cast") sleeve(5,-28,hx,hy);                            // the arm, thrown forward
+  if(pose==="doom") sleeve(12,-29,hx,hy);                           // the arm, raised
+  c.strokeStyle=o.ol; c.lineWidth=4.8; c.beginPath(); c.moveTo(sx1,sy1); c.lineTo(sx2,sy2); c.stroke();
+  c.strokeStyle=o.wood; c.lineWidth=2.8; c.beginPath(); c.moveTo(sx1,sy1); c.lineTo(sx2,sy2); c.stroke();
+  const g=c.createRadialGradient(jx,jy,0,jx,jy,glowR);
+  g.addColorStop(0,"rgba(255,255,255,.95)"); g.addColorStop(0.4,orbCol); g.addColorStop(1,"rgba(0,0,0,0)");
+  c.fillStyle=g; c.beginPath(); c.arc(jx,jy,glowR,0,Math.PI*2); c.fill();
+  dot(sx2,sy2,2.8,o.gold);                                          // the claw's collar
+  hexPath(c,jx,jy,jr); c.fillStyle=orbCol; c.fill(); c.strokeStyle=o.ol; c.lineWidth=1.7; c.stroke();
+  hexPath(c,jx,jy,jr*0.55); c.fillStyle="#fff"; c.fill();           // ⬡ the JEWEL
+  if(pose==="cast"){                                                // the burst, like the sheet
+    c.strokeStyle=orbCol; c.lineWidth=2.6;
+    for(const a of [-1.85,-1.2,-0.55]){ c.beginPath(); c.moveTo(jx+Math.cos(a)*(jr+3),jy+Math.sin(a)*(jr+3)); c.lineTo(jx+Math.cos(a)*(jr+9),jy+Math.sin(a)*(jr+9)); c.stroke(); }
+  }
+  if(pose==="doom"){                                                // the skull, framed in a HEXAGON, swelling over the wind-up
+    const k=1-P.doomT/Math.max(0.01,TUNE.doomWind), fr=10+8*k, fx=jx, fy=jy-jr-fr-3;
+    c.save(); c.globalAlpha*=0.45+0.55*k;
+    c.shadowColor="#b06bff"; c.shadowBlur=16;
+    hexPath(c,fx,fy,fr); c.fillStyle="rgba(150,70,220,.4)"; c.fill(); c.strokeStyle="#e0b3ff"; c.lineWidth=3; c.stroke();
+    c.shadowBlur=0; c.translate(fx,fy); const s=fr/12; c.scale(s,s);
+    c.fillStyle="#f0d6ff"; c.beginPath(); c.arc(0,-2,6.5,0,Math.PI*2); c.fill(); aRR(c,-4,2.5,8,5,1.8); c.fill();
+    c.fillStyle="#3a1a66"; c.beginPath(); c.arc(-2.6,-2,2,0,Math.PI*2); c.arc(2.6,-2,2,0,Math.PI*2); c.fill();
+    c.beginPath(); c.moveTo(0,1.2); c.lineTo(-1.1,3.3); c.lineTo(1.1,3.3); c.closePath(); c.fill();
+    c.restore();
+  }
+  dot(hx,hy,2.9,o.skin);                                            // front hand on the staff
   c.restore();
   if(pose==="hurt"){                                                // the sheet's "!!"
-    c.strokeStyle=o.gold; c.lineWidth=2.5;
-    for(const [x1,y1,x2,y2] of [[-4,-84,-7,-92],[3,-86,3,-95],[10,-84,13,-92]]){ c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
+    c.strokeStyle=o.yel; c.lineWidth=2.6;
+    for(const [x1,y1,x2,y2] of [[-2,-84,-5,-92],[6,-86,6,-95],[14,-84,17,-92]]){ c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
   }
   c.restore();
 }
@@ -2327,7 +2369,7 @@ function step(dt){
       const hitSomething=tgt||tBullet;
       const endX=P.x+P.face*(hitSomething?td:R);
       const endY=tgt?GROUND-tgt.def.h*0.5:(tBullet?tBullet.y:GROUND-34);
-      zaps.push({x1:P.x+P.face*36,y1:GROUND-28,x2:endX,y2:endY,t:0.1});   // v0.32: from the thrust orb, not the old staff spot
+      zaps.push({x1:P.x+P.face*38,y1:GROUND-28,x2:endX,y2:endY,t:0.1});   // v0.33: from the hex jewel at the end of the thrust
       shake=Math.min(1,shake+0.08);
       if(tBullet){
         tBullet.t=-1; led.pop++;
@@ -2343,7 +2385,7 @@ function step(dt){
                      .sort((a,b)=>Math.abs(a.x-P.x)-Math.abs(b.x-P.x)).slice(0,extra);
           for(const b of more){
             b.t=-1; led.pop++;
-            zaps.push({x1:P.x+P.face*36,y1:GROUND-28,x2:b.x,y2:b.y,t:0.1});
+            zaps.push({x1:P.x+P.face*38,y1:GROUND-28,x2:b.x,y2:b.y,t:0.1});
             puff(b.x,b.y,"#9646dc",6);
             returnToSender(b);                           // 🎖️ v0.25: Ward feeds the Marshal fight
           }
@@ -2385,7 +2427,7 @@ function step(dt){
                     aoe:arm.aoe?emberBlast():0});                  // 🔥 v0.26: Ember bursts
       sfx(arm.pierce?"lance":"ember");
       shake=Math.min(1,shake+0.3);
-      puff(P.x+P.face*36,GROUND-28,arm.col,3);                     // v0.32: the flash at the thrust orb
+      puff(P.x+P.face*38,GROUND-28,arm.col,3);                     // v0.33: the flash at the hex jewel
       if((P.runes[P.sel]||0)<=0){
         floats.push({x:P.x,y:GROUND-78,txt:"out of "+arm.label.toLowerCase(),col:"#ff6b8b",t:1.2,vy:-20});
         P.sel="hex";
