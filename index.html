@@ -1787,28 +1787,54 @@ const UNIT_ART={
     }
   },
   thug(c,W,H,p,e,m){
-    /* v0.37 — from Talon's THUG SHEET (Art/Sheet - Thug.png): a tall head under a charcoal
-       flat-top, a white tank with a scoop neck, BIG bare arms in a boxer's guard (jointed —
-       shoulder, elbow, fist) with charcoal wristbands, the light ▢ buckle. The front arm
-       straightens into the PUNCH, with the yellow burst. */
-    const a=e._atk||0, aw=0.3*W;
-    if(e.downT===undefined&&!(e.flash>0)) c.rotate(-0.04);         // leaning in
-    aLegs(c,W,H,p,0.32,0.28,0.2,e.bob);
-    aArm(c,[[0.3*W,-0.55*H],[0.5*W,-0.3*H],[0.64*W,-0.6*H]],aw,p);    // back arm: elbow DOWN by the belt, fist up
-    aFist(c,0.64*W,-0.62*H,0.25*W,p);
-    aBox(c,-0.46*W,-0.58*H,0.92*W,0.34*H,0.06*W,p.tank,p);       // the white tank
-    c.beginPath(); c.moveTo(-0.3*W,-0.58*H); c.quadraticCurveTo(-0.08*W,-0.45*H,0.14*W,-0.58*H); c.closePath();
-    aFill(c,p.skin,p);                                            // its scoop neck
-    aBelt(c,-0.48*W,-0.27*H,0.96*W,0.08*H,p,-0.06*W,p.tank);     // ▢ the light buckle
-    aBox(c,-0.4*W,-0.98*H,0.8*W,0.44*H,0.05*W,p.skin,p);         // the tall head
-    aBox(c,-0.45*W,-1.07*H,0.9*W,0.17*H,0.04*W,p.clothD,p);      // charcoal flat-top
-    aFace(c,-0.1*W,-0.76*H,0.66*W,p,m);
-    const S=[-0.34*W,-0.55*H];                                    // front arm: a V-shaped guard → PUNCH
-    const E=lerp2([-0.66*W,-0.3*H],[-0.95*W,-0.53*H],a);
-    const F=lerp2([-0.88*W,-0.62*H],[-1.45*W,-0.58*H],a);
-    aArm(c,[S,E,F],aw,p);
-    aFist(c,F[0],F[1],0.26*W,p);
-    if(a>0.45) aBurst(c,F[0],F[1],W);
+    /* v0.38 — Talon's arm notes: a COMPACT CARTOON BOXING STANCE, not arms flung out to the
+       sides. Both arms anchor at the shoulders; short thick segments; fists held close to
+       the chest and chin. Layer order (Talon's): far arm + fist → far leg → torso + near
+       leg → head → near arm + fist → face + effects.
+       HEAVIER than the Mob: the upper body sinks on every step (a stomp), and the punch has
+       a WIND-UP → STRIKE → RECOVER, with the far fist staying up in guard throughout. */
+    const aw=0.3*W, fs=0.22*W;
+    /* the punch, from the raw swing progress: pull back, drive through, settle */
+    let k=0;
+    if(e.atkT>0){ const u=1-e.atkT/0.3;
+      k = u<0.3 ? -0.4*(u/0.3) : u<0.55 ? -0.4+1.4*((u-0.3)/0.25) : 1-(u-0.55)/0.45; }
+    const walking=e.downT===undefined&&!(e.flash>0)&&!(e.stun>0);
+    const dip=walking?Math.abs(Math.sin(e.bob))*0.03*H:0;          // the heavy step: everything above the hips sinks
+    const roll=walking?Math.sin(e.bob)*0.025:0;                     // …and the shoulders roll with it
+    const sw=walking?Math.sin(e.bob)*H*0.035:0;                     // a slower, shorter stride than the Mob
+    const legW=0.32*W, legH=0.28*H, bootH=0.075*H;
+    const leg=(x)=>{ aBox(c,x-legW/2,-legH,legW,legH,legW*0.12,p.cloth,p);
+                     aBox(c,x-legW*0.78,-bootH,legW*1.35,bootH,H*0.02,p.clothD,p); };
+    /* the UPPER BODY lives in its own frame so the step can sink it */
+    const upper=(fn)=>{ c.save(); c.translate(0,dip); c.rotate(roll); fn(); c.restore(); };
+    // 1 · FAR arm + fist — behind everything; the fist peeks out by the chin (rear-hand guard)
+    upper(()=>{
+      aArm(c,[[0.22*W,-0.53*H],[-0.05*W,-0.38*H],[-0.36*W,-0.68*H]],aw,p);
+      aFist(c,-0.42*W,-0.7*H,fs,p);                               // half of it hides behind the head
+    });
+    // 2 · FAR leg
+    leg(0.2*W-sw);
+    // 3 · TORSO + NEAR leg
+    leg(-0.2*W+sw);
+    upper(()=>{
+      aBox(c,-0.46*W,-0.58*H,0.92*W,0.34*H,0.06*W,p.tank,p);     // the white tank
+      c.beginPath(); c.moveTo(-0.3*W,-0.58*H); c.quadraticCurveTo(-0.08*W,-0.45*H,0.14*W,-0.58*H); c.closePath();
+      aFill(c,p.skin,p);                                          // its scoop neck
+      aBelt(c,-0.48*W,-0.27*H,0.96*W,0.08*H,p,-0.06*W,p.tank);   // ▢ the light buckle
+      // 4 · HEAD
+      aBox(c,-0.4*W,-0.98*H,0.8*W,0.44*H,0.05*W,p.skin,p);
+      aBox(c,-0.45*W,-1.07*H,0.9*W,0.17*H,0.04*W,p.clothD,p);    // charcoal flat-top
+      // 5 · NEAR arm + fist — in front, elbow bent, fist up at the chest; it PUNCHES by
+      //     opening the elbow + a modest reach (not a stretch)
+      const S=[-0.28*W,-0.52*H];
+      const E=lerp2([-0.42*W,-0.32*H],[-0.64*W,-0.46*H],k);
+      const F=lerp2([-0.66*W,-0.5*H],[-1.12*W,-0.52*H],k);
+      aArm(c,[S,E,F],aw,p);
+      aFist(c,F[0],F[1],fs*1.05,p);
+      // 6 · FACE + effects
+      aFace(c,-0.1*W,-0.76*H,0.66*W,p,m);
+      if(k>0.6) aBurst(c,F[0],F[1],W);
+    });
   },
   runner(c,W,H,p,e,m){
     c.save(); c.globalAlpha*=0.55; c.strokeStyle=p.wood; c.lineWidth=Math.max(1,H*0.035); c.lineCap="round";
