@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.44 — Riot Shield</title>
+<title>HexCap v0.45 — Brute</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.44 — RIOT SHIELD</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.45 — BRUTE</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -2196,34 +2196,62 @@ const UNIT_ART={
     c.restore();
   },
   brute(c,W,H,p,e,m){
-    /* V torso in a tank top, small square head, gold chain with a SQUARE pendant, a
-       double-square tattoo, wristbands studded with squares, a big square buckle */
-    const a=e._atk||0;
-    aLegs(c,W,H,p,0.32,0.28,0.25,e.bob*0.7);
-    aBox(c,0.44*W,-0.86*H,0.44*W,0.5*H,0.1*W,p.skin,p);         // back arm — massive
-    aBoxT(c,0.42*W,-0.44*H,0.48*W,0.08*H,p.clothD,p);           // wristband
-    aSq(c,0.56*W,-0.4*H,0.045*W,p); aSq(c,0.76*W,-0.4*H,0.045*W,p);
-    aFist(c,0.66*W,-0.3*H,0.19*W,p);
-    c.beginPath(); c.moveTo(-0.64*W,-0.9*H); c.lineTo(0.64*W,-0.9*H); c.lineTo(0.42*W,-0.3*H); c.lineTo(-0.42*W,-0.3*H); c.closePath();
-    aFill(c,p.skin,p);                                           // the V torso
-    c.beginPath(); c.moveTo(-0.3*W,-0.84*H); c.lineTo(0.3*W,-0.84*H); c.lineTo(0.42*W,-0.3*H); c.lineTo(-0.42*W,-0.3*H); c.closePath();
-    aFill(c,p.clothD,p);                                         // tank top
-    aBox(c,0.32*W,-0.92*H,0.58*W,0.3*H,0.14*W,p.skin,p);        // back shoulder — huge, sits BELOW the head, ties the arm on
-    c.save(); c.strokeStyle=p.cloth; c.lineWidth=Math.max(1,W*0.03); c.lineJoin="miter";   // ▢▢ the double-square tattoo
-    c.strokeRect(0.53*W,-0.85*H,0.2*W,0.2*W); c.strokeRect(0.59*W,-0.85*H+0.06*W,0.08*W,0.08*W); c.restore();
-    aBelt(c,-0.47*W,-0.36*H,0.94*W,0.1*H,p,0);                  // ▢ the big buckle
-    aBox(c,-0.38*W,-1.04*H,0.6*W,0.34*H,0.04*W,p.skin,p);       // small square head
-    aFace(c,-0.1*W,-0.88*H,0.52*W,p,m);
-    c.save(); c.fillStyle=p.gold; c.strokeStyle=p.ol; c.lineWidth=Math.max(1,H*0.015);   // the chain
-    for(let i=0;i<7;i++){ c.beginPath(); c.arc((-0.36+i*0.12)*W,-0.72*H+Math.sin(i/6*Math.PI)*H*0.07,0.045*W,0,Math.PI*2); c.fill(); c.stroke(); }
-    c.restore();
-    aSq(c,0,-0.6*H,0.08*W,p);                                    // ▢ square pendant
-    c.save(); c.translate(-0.62*W,-0.84*H); c.rotate(1.35*a); c.translate(0.62*W,0.84*H);   // the haymaker
-    aBox(c,-0.88*W,-0.86*H,0.44*W,0.5*H,0.1*W,p.skin,p);        // front arm — massive
-    aBox(c,-0.92*W,-0.92*H,0.58*W,0.3*H,0.14*W,p.skin,p);       // front shoulder
-    aBoxT(c,-0.9*W,-0.44*H,0.48*W,0.08*H,p.clothD,p);           // wristband
-    aSq(c,-0.78*W,-0.4*H,0.045*W,p); aSq(c,-0.58*W,-0.4*H,0.045*W,p);
-    aFist(c,-0.66*W,-0.3*H,0.19*W,p);
+    /* v0.45 — from Talon's BRUTE SHEET (Art/Sheet - Brute.png). The gold chain + tattoo are gone
+       (gold is the wizard's). The crew's cap + ear protection; HUGE rounded shoulders with a
+       small head set low between them; a white tank with charcoal SUSPENDERS and orange clips;
+       big studded wristbands; the light ▢ buckle. The slowest, heaviest step in the gang.
+       Arms per the v0.39 rule, each ONE silhouette (shoulder mass + forearm): the BACK arm
+       hangs heavy at his side; the FRONT arm is the action arm — WIND-UP (cocks up and back)
+       → STRIKE (drives straight out, yellow burst) → RECOVER. Face last. */
+    const down=e.downT!==undefined, hurt=e.flash>0&&!down;
+    let k=0;
+    if(e.atkT>0){ const u=1-e.atkT/0.3;
+      k = u<0.3 ? -0.45*(u/0.3) : u<0.55 ? -0.45+1.45*((u-0.3)/0.25) : 1-(u-0.55)/0.45; }
+    const walking=!down&&!hurt&&!(e.stun>0);
+    const dip=walking?Math.abs(Math.sin(e.bob))*0.04*H:0;           // the HEAVIEST step
+    const roll=walking?Math.sin(e.bob)*0.03:0;
+    const aw=0.3*W, lw=Math.max(1.5,H*0.045);
+    /* one arm = shoulder mass + forearm, outlines first then fills (no seams) */
+    const arm=(SB,S,E,F)=>{
+      const sh=()=>aRR(c,SB[0],SB[1],SB[2],SB[3],0.18*W);
+      const fo=()=>{ c.beginPath(); c.moveTo(S[0],S[1]); c.lineTo(E[0],E[1]); c.lineTo(F[0],F[1]); };
+      c.save(); c.lineJoin="round"; c.lineCap="round";
+      c.strokeStyle=p.ol; c.lineWidth=aw+2.8; fo(); c.stroke(); c.lineWidth=lw*2; sh(); c.stroke();
+      c.fillStyle=p.skin; sh(); c.fill(); c.strokeStyle=p.skin; c.lineWidth=aw; fo(); c.stroke();
+      c.strokeStyle=p.clothD; c.lineCap="butt"; c.beginPath();      // the big wristband…
+      c.moveTo(F[0]+(E[0]-F[0])*0.26,F[1]+(E[1]-F[1])*0.26); c.lineTo(F[0]+(E[0]-F[0])*0.55,F[1]+(E[1]-F[1])*0.55); c.stroke();
+      const mx=F[0]+(E[0]-F[0])*0.4, my=F[1]+(E[1]-F[1])*0.4;
+      c.restore();
+      aBoxT(c,mx-0.04*W,my-0.04*W,0.08*W,0.08*W,p.metal,p);          // …with a stud
+    };
+    aLegs(c,W,H,p,0.3,0.28,0.24,walking?e.bob*0.7:0);
+    c.save(); c.translate(0,dip); c.rotate(roll);
+    // BACK arm — hangs heavy at his side (behind the torso)
+    arm([0.16*W,-0.86*H,0.6*W,0.34*H],[0.5*W,-0.64*H],[0.62*W,-0.5*H],hurt?[0.66*W,-0.34*H]:[0.6*W,-0.38*H]);
+    if(!down) aFist(c,0.6*W,hurt?-0.34*H:-0.38*H,0.19*W,p);
+    // the white tank, suspenders + orange clips, belt
+    aBox(c,-0.4*W,-0.7*H,0.8*W,0.42*H,0.05*W,p.tank,p);
+    aBoxT(c,-0.28*W,-0.7*H,0.1*W,0.4*H,p.clothD,p);
+    aBoxT(c,0.14*W,-0.7*H,0.1*W,0.4*H,p.clothD,p);
+    aBoxT(c,-0.29*W,-0.39*H,0.12*W,0.06*H,p.accent,p);
+    aBoxT(c,0.13*W,-0.39*H,0.12*W,0.06*H,p.accent,p);
+    aBelt(c,-0.44*W,-0.31*H,0.88*W,0.09*H,p,-0.06*W,p.tank);       // ▢ light buckle
+    // FRONT arm — the ACTION arm
+    const F0=[-0.62*W,-0.38*H], FW=[-0.42*W,-0.64*H], FS=[-1.3*W,-0.6*H];
+    const E0=[-0.66*W,-0.52*H], EW=[-0.6*W,-0.5*H],  ES=[-0.95*W,-0.62*H];
+    const F=hurt?[-0.56*W,-0.32*H]:(k<0?lerp2(F0,FW,-k/0.45):lerp2(F0,FS,k));
+    const E=hurt?[-0.62*W,-0.46*H]:(k<0?lerp2(E0,EW,-k/0.45):lerp2(E0,ES,k));
+    arm([-0.8*W,-0.86*H,0.6*W,0.34*H],[-0.5*W,-0.64*H],E,F);
+    // the small head set low between the shoulders + the crew's cap + ear protection
+    aBox(c,-0.36*W,-0.98*H,0.6*W,0.34*H,0.05*W,p.skin,p);
+    aBox(c,-0.4*W,-1.08*H,0.68*W,0.16*H,0.07*H,p.cloth,p);
+    aBoxT(c,-0.36*W,-1.05*H,0.26*W,0.07*H,p.metal,p);
+    aBox(c,-0.58*W,-0.94*H,0.36*W,0.045*H,0.02*W,p.clothD,p);
+    aBox(c,0.08*W,-0.9*H,0.17*W,0.16*H,0.05*W,p.metal,p);
+    aBoxT(c,0.12*W,-0.86*H,0.09*W,0.08*H,p.accent,p);
+    aFace(c,-0.12*W,-0.79*H,0.44*W,p,m);
+    if(!down) aFist(c,F[0],F[1],0.21*W,p);
+    if(k>0.6) aBurst(c,F[0],F[1],W*0.9);
     c.restore();
   }
 };
