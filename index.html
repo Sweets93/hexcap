@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.35 — Square Faction</title>
+<title>HexCap v0.36 — Mob</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.35 — SQUARE FACTION</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.36 — MOB</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -1100,7 +1100,7 @@ function reset(){
      pots:Math.min(potCap(),1), potT:0, wind:upg("secondwind")>0, sel:"hex",
      cd:0,hidden:false,door:null,doorCD:0,entryT:0,entryDoor:null,
      pickP:0,pickDoor:null,pickFlash:0,hurtT:0,maxX:60,casting:0,hexing:0};
-  enemies=[];bolts=[];ebolts=[];zaps=[];parts=[];floats=[];booms=[];
+  enemies=[];bolts=[];ebolts=[];zaps=[];parts=[];floats=[];booms=[];downs=[];
   cam=0;budget=2;burstT=1.4;blockIdx=0;kills=0;lastX=60;
   arena={active:false,lo:0,hi:0,boss:null,summonT:0,bossMax:1,
          pending:null,trigger:0,block:0,cine:0};
@@ -1372,6 +1372,7 @@ function togglePause(){
   document.getElementById("pauseBtn").textContent=paused?"▶ RESUME":"⏸ PAUSE";
 }
 let booms=[];   // 🔥 v0.26 blast rings
+let downs=[];   // 💫 v0.36 knocked-flat bodies — a picture of the fallen, never a unit (looks only)
 function select(w){ if(w!=="hex"&&(!runeUnlocked(w)||(P.runes[w]||0)<=0)) return; if(P.doomT>0) return; P.sel=w; hud(); }
 function cycle(d){
   const order=RUNE_ORDER, L=order.length; let i=order.indexOf(P.sel);
@@ -1643,9 +1644,11 @@ const SND={on:true,ctx:null,master:null,last:{}};
    `gold` keeps its key name but is now the faction's bright ORANGE: every ▢ is an orange
    square with a charcoal centre. Purple and gold are the wizard's alone. */
 /* charcoal lifted 2 steps after the in-game check: true charcoal vanished into the night street */
-const ART_BASE={skin:"#f0883e",skinD:"#c9652a",cloth:"#5d5d6a",clothD:"#41414c",ol:"#141318",
+/* v0.36 (Mob sheet): skin goes PEACH (#f59d62) so the vivid ORANGE (`accent`) can be the
+   faction's trim colour — the sheet's palette: outline · clothing · shirt · accent · skin */
+const ART_BASE={skin:"#f59d62",skinD:"#c9652a",cloth:"#5d5d6a",clothD:"#41414c",ol:"#141318",
   gold:"#ff9d3c",red:"#c4561f",metal:"#8d8e98",metalD:"#5c5d66",cyan:"#5fd6e8",wood:"#e7b56a",mouth:"#3a1020",
-  tank:"#ebe5f2",hair:"#202027",woodD:"#8a5a34",shell:"#c23a3a"};
+  tank:"#e6e6ec",hair:"#202027",woodD:"#8a5a34",shell:"#c23a3a",accent:"#ff7417"};
 const ART_CACHE={};
 function artShade(hex,k){
   const n=parseInt(hex.slice(1),16);
@@ -1714,32 +1717,53 @@ function aLegs(c,W,H,p,lw,legH,spread,ph){
   aBox(c, spread*W-lw*W*0.78-sw,-H*0.075,lw*W*1.35,H*0.075,H*0.02,p.clothD,p);
 }
 /* ▢ THE ERA'S SHAPE: a gold square with a dark square inside — buckles, badges, emblems, studs */
-function aSq(c,x,y,s,p,inner){
+function aSq(c,x,y,s,p,inner,outer){
   c.save(); c.lineWidth=Math.max(1,s*0.35); c.lineJoin="miter";
-  c.fillStyle=p.gold; c.strokeStyle=p.ol; c.beginPath(); c.rect(x-s,y-s,2*s,2*s); c.fill(); c.stroke();
+  c.fillStyle=outer||p.gold; c.strokeStyle=p.ol; c.beginPath(); c.rect(x-s,y-s,2*s,2*s); c.fill(); c.stroke();
   c.fillStyle=inner||p.clothD; c.fillRect(x-s*0.42,y-s*0.42,s*0.84,s*0.84);
   c.restore();
 }
 /* the belt everyone wears — with the square buckle */
-function aBelt(c,x,y,w,h,p,bx){
+function aBelt(c,x,y,w,h,p,bx,outer){
   c.save(); c.lineWidth=Math.max(1,h*0.3); aBox(c,x,y,w,h,h*0.2,p.clothD,p); c.restore();
-  aSq(c,bx,y+h/2,h*0.78,p);
+  aSq(c,bx,y+h/2,h*0.78,p,null,outer);
 }
 /* small detail boxes need a thinner outline than bodies */
 function aBoxT(c,x,y,w,h,fill,p){ c.save(); c.lineWidth=1; aBox(c,x,y,w,h,Math.min(w,h)*0.15,fill,p); c.restore(); }
 /* each painter draws in a frame where (0,0) = the unit's feet, -y is up, front = -x */
 const UNIT_ART={
   mob(c,W,H,p,e,m){
-    /* the littlest guy: one squat square block, beanie, fists up in a guard */
-    const a=e._atk||0;                                           // both fists flail forward
-    aLegs(c,W,H,p,0.34,0.24,0.22,e.bob);
-    aFist(c,0.68*W-0.8*W*a,-0.44*H-0.08*H*a,0.17*W,p);
-    aBox(c,-0.56*W,-0.74*H,1.12*W,0.52*H,0.06*W,p.skin,p);
-    aBelt(c,-0.58*W,-0.3*H,1.16*W,0.09*H,p,-0.12*W);
-    aBox(c,-0.6*W,-0.9*H,1.2*W,0.22*H,0.3*W,p.cloth,p);         // beanie
-    aBox(c,-0.63*W,-0.74*H,1.26*W,0.08*H,0.03*W,p.clothD,p);    // beanie cuff
-    aFace(c,-0.08*W,-0.53*H,0.62*W,p,m);
-    aFist(c,-0.72*W-0.35*W*a,-0.44*H+0.02*H*a,0.17*W,p);
+    /* v0.36 — from Talon's MOB SHEET (Art/Sheet - Mob.png): a big ribbed beanie, an open
+       charcoal jacket with ORANGE trim over a white shirt, a light ▢ buckle, big fists up
+       in a guard on jacket sleeves. Leans in as he walks; the front fist PUNCHES with a
+       yellow impact burst. (Hurt lean + knocked-flat defeat are shared by every unit.) */
+    const a=e._atk||0;
+    if(e.downT===undefined&&!(e.flash>0)) c.rotate(-0.05);         // always leaning in at you
+    /* CHUNKY, like the sheet: wider than he is tall (drawn wider than his hitbox — looks only) */
+    aLegs(c,W,H,p,0.36,0.24,0.24,e.bob);
+    aBox(c,0.34*W,-0.47*H,0.32*W,0.14*H,0.04*W,p.cloth,p);       // back sleeve…
+    aFist(c,0.72*W,-0.41*H,0.24*W,p);                             // …and back fist (the guard)
+    aBox(c,-0.6*W,-0.48*H,1.2*W,0.28*H,0.06*W,p.cloth,p);        // the jacket
+    aBoxT(c,-0.24*W,-0.47*H,0.4*W,0.22*H,p.tank,p);              // white shirt
+    aBoxT(c,-0.37*W,-0.47*H,0.13*W,0.25*H,p.accent,p);           // orange trim, both sides
+    aBoxT(c,0.16*W,-0.47*H,0.13*W,0.25*H,p.accent,p);
+    aBelt(c,-0.62*W,-0.27*H,1.24*W,0.08*H,p,-0.04*W,p.tank);     // ▢ the light buckle
+    aBox(c,-0.55*W,-0.78*H,1.1*W,0.34*H,0.06*W,p.skin,p);        // a BROAD head
+    aFace(c,-0.1*W,-0.62*H,0.64*W,p,m);
+    aBox(c,-0.64*W,-1.0*H,1.28*W,0.26*H,0.5*W,p.cloth,p);        // big round beanie dome
+    aBox(c,-0.68*W,-0.85*H,1.36*W,0.13*H,0.04*W,p.cloth,p);      // the thick cuff…
+    c.save(); c.strokeStyle=p.clothD; c.lineWidth=1;              // …with its ribs
+    for(let i=1;i<8;i++){ const x=-0.68*W+i*0.17*W; c.beginPath(); c.moveTo(x,-0.835*H); c.lineTo(x,-0.73*H); c.stroke(); }
+    c.restore();
+    const fx=-0.78*W-0.75*W*a, fy=-0.41*H-0.05*H*a;               // the front fist — PUNCHES
+    aBox(c,fx+0.12*W,-0.47*H,-0.54*W-fx,0.14*H,0.04*W,p.cloth,p); // its sleeve stretches with it
+    aFist(c,fx,fy,0.24*W,p);
+    if(a>0.45){                                                   // the sheet's impact burst
+      c.save(); c.strokeStyle="#ffd84a"; c.lineWidth=1.6; c.lineCap="round";
+      for(const [x1,y1,x2,y2] of [[-0.3,-0.3,-0.52,-0.58],[-0.34,0,-0.64,0],[-0.3,0.3,-0.52,0.58]]){
+        c.beginPath(); c.moveTo(fx+x1*W,fy+y1*W); c.lineTo(fx+x2*W,fy+y2*W); c.stroke(); }
+      c.restore();
+    }
   },
   thug(c,W,H,p,e,m){
     /* tall block, flat-top, white tank. The guard fist is UP HIGH and out front — nowhere near
@@ -1888,7 +1912,7 @@ function drawUnitArt(e,px,by){
   const d=e.def, fn=d&&d.key&&UNIT_ART[d.key];
   if(!fn||e.isBoss) return false;
   const W=d.w, H=d.h, p=artPal(e);
-  const mood=e.stun>0?"stun":(e.flash>0?"hurt":"");
+  const mood=(e.stun>0||e.downT!==undefined)?"stun":(e.flash>0?"hurt":"");
   e._atk=e.atkT>0?Math.sin((1-e.atkT/0.3)*Math.PI):0;              // 0 → 1 → 0 over the swing
   ctx.save();
   ctx.fillStyle="rgba(0,0,0,.28)";                                   // ground shadow
@@ -1896,8 +1920,24 @@ function drawUnitArt(e,px,by){
   ctx.translate(px,GROUND+by);
   if(e.facing>0) ctx.scale(-1,1);                                    // art faces LEFT
   if(e._atk) ctx.translate(-W*0.28*e._atk,0);                        // v0.31: lunge INTO the swing
+  const down=e.downT!==undefined, dk=down?Math.min(1,e.downT/0.18):0;
+  if(down){                                                          // 💫 v0.36: KNOCKED FLAT (looks only)
+    const kk=dk*dk*(3-2*dk);                                         //   falls over backwards in 0.18s…
+    ctx.globalAlpha*=Math.max(0,Math.min(1,(0.9-e.downT)/0.35));     //   …lies there, then fades
+    ctx.save(); ctx.translate(0,-W*0.55*kk); ctx.rotate(kk*Math.PI/2);
+  } else if(e.flash>0) ctx.rotate(0.13);                             // 🎨 v0.36: HIT → he rocks back
   ctx.lineWidth=Math.max(1.5,H*0.045); ctx.lineJoin="round";
   try{ fn(ctx,W,H,p,e,mood); }catch(_){}
+  if(down){
+    ctx.restore();
+    if(dk>=1){                                                       //   the dizzy swirl over his head — drawn ON TOP
+      const sx=H*0.82, sy=-W*0.95-7-Math.sin(e.downT*9)*1.5;
+      ctx.save(); ctx.strokeStyle="#e8e8f0"; ctx.lineWidth=1.4; ctx.lineCap="round"; ctx.beginPath();
+      for(let i=0;i<=26;i++){ const a=i*0.45+e.downT*10, r=0.6+i*0.24; const x=sx+Math.cos(a)*r*1.4, y=sy+Math.sin(a)*r*0.6;
+        if(i) ctx.lineTo(x,y); else ctx.moveTo(x,y); }
+      ctx.stroke(); ctx.restore();
+    }
+  }
   ctx.restore();
   return true;
 }
@@ -2355,6 +2395,8 @@ function step(dt){
   }
   for(const bm of booms) bm.t-=dt;
   booms=booms.filter(bm=>bm.t>0);
+  for(const d of downs) d.downT+=dt;
+  downs=downs.filter(d=>d.downT<0.9);
 
   if(P.potT>0){
     P.potT-=dt;
@@ -2835,6 +2877,9 @@ function killed(e,src){
   const c=coinOf(e.def); P.coin+=c; led.earn+=c;
   if(src==="rune") led.runeKillCoin+=c;   // the real Law-of-Return numerator
   splat(e.x,GROUND-e.def.h*0.55);
+  if(!SIM&&!e.isBoss&&e.def.key&&downs.length<24)                 // 💫 v0.36: he goes down flat
+    downs.push({def:e.def,x:e.x,facing:e.facing,lane:e.lane||0,bob:e.bob||0,flash:0,stun:0,
+                shieldHp:0,aim:0,atkT:0,downT:0});
   floats.push({x:e.x,y:GROUND-e.def.h-6,txt:"😭",col:"#fff",t:0.95,vy:-54,big:true});
   if(c>0) floats.push({x:e.x+16,y:GROUND-e.def.h-22,txt:"+"+c,col:"#ffd166",t:0.9,vy:-38});
   if(Math.random()<runeDropPct()/100){
@@ -3072,6 +3117,10 @@ function draw(){
     ctx.setLineDash([]);
   }
 
+  for(const d of downs){                                             // 💫 the fallen, under the living
+    const px=d.x-cam; if(px<-90||px>VW+90) continue;
+    ctx.save(); drawUnitArt(d,px,-d.lane*5); ctx.restore();
+  }
   // draw back lanes first so a crowd layers instead of becoming one silhouette
   const drawList=enemies.slice().sort((a,b)=>b.lane-a.lane);
   for(const e of drawList){
