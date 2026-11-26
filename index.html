@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.34 — Square Gang</title>
+<title>HexCap v0.35 — Square Faction</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.34 — SQUARE GANG</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.35 — SQUARE FACTION</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -1638,9 +1638,14 @@ const SND={on:true,ctx:null,master:null,last:{}};
    box never changes — only what's painted on it. Bosses keep their old look
    until Sheet E (Pass 2).
    ========================================================== */
-const ART_BASE={skin:"#f0883e",skinD:"#c9652a",cloth:"#5b3a8c",clothD:"#3e2766",ol:"#1b1330",
-  gold:"#f2c14e",red:"#b8434f",metal:"#6d6f8c",metalD:"#4a4b63",cyan:"#5fd6e8",wood:"#e7b56a",mouth:"#3a1020",
-  tank:"#ebe5f2",hair:"#2b1f3f",woodD:"#8a5a34",shell:"#c23a3a"};
+/* v0.35 — THE SQUARE FACTION palette (Talon: "I want the purple and gold to only belong to
+   the wizard"). Modern era = ORANGE + CHARCOAL (Art/Era Factions - shapes and colors.png).
+   `gold` keeps its key name but is now the faction's bright ORANGE: every ▢ is an orange
+   square with a charcoal centre. Purple and gold are the wizard's alone. */
+/* charcoal lifted 2 steps after the in-game check: true charcoal vanished into the night street */
+const ART_BASE={skin:"#f0883e",skinD:"#c9652a",cloth:"#5d5d6a",clothD:"#41414c",ol:"#141318",
+  gold:"#ff9d3c",red:"#c4561f",metal:"#8d8e98",metalD:"#5c5d66",cyan:"#5fd6e8",wood:"#e7b56a",mouth:"#3a1020",
+  tank:"#ebe5f2",hair:"#202027",woodD:"#8a5a34",shell:"#c23a3a"};
 const ART_CACHE={};
 function artShade(hex,k){
   const n=parseInt(hex.slice(1),16);
