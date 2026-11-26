@@ -1787,51 +1787,52 @@ const UNIT_ART={
     }
   },
   thug(c,W,H,p,e,m){
-    /* v0.38 — Talon's arm notes: a COMPACT CARTOON BOXING STANCE, not arms flung out to the
-       sides. Both arms anchor at the shoulders; short thick segments; fists held close to
-       the chest and chin. Layer order (Talon's): far arm + fist → far leg → torso + near
-       leg → head → near arm + fist → face + effects.
-       HEAVIER than the Mob: the upper body sinks on every step (a stomp), and the punch has
-       a WIND-UP → STRIKE → RECOVER, with the far fist staying up in guard throughout. */
-    const aw=0.3*W, fs=0.22*W;
-    /* the punch, from the raw swing progress: pull back, drive through, settle */
-    let k=0;
+    /* v0.39 — Talon: "the arms still feel too detached and bar-like… simplify rather than
+       forcing full articulation." A compact STREET BOXER:
+       · ONE visible ACTION ARM: a big shoulder block fused with a short forearm, drawn as a
+         single silhouette (all outlines first, then all fills → no seams, nothing detached).
+         Bent in idle/walk; pulls back, drives straight forward, returns.
+       · ONE GUARD FIST tucked by the cheek, half behind the head. No arm at all.
+       · Broader than the Mob: a back-shoulder bump. Heavy steps + a small bounce. */
+    const fs=0.24*W, aw=0.32*W;
+    let k=0;                                                        // wind-up → strike → recover
     if(e.atkT>0){ const u=1-e.atkT/0.3;
-      k = u<0.3 ? -0.4*(u/0.3) : u<0.55 ? -0.4+1.4*((u-0.3)/0.25) : 1-(u-0.55)/0.45; }
-    const walking=e.downT===undefined&&!(e.flash>0)&&!(e.stun>0);
-    const dip=walking?Math.abs(Math.sin(e.bob))*0.03*H:0;          // the heavy step: everything above the hips sinks
-    const roll=walking?Math.sin(e.bob)*0.025:0;                     // …and the shoulders roll with it
-    const sw=walking?Math.sin(e.bob)*H*0.035:0;                     // a slower, shorter stride than the Mob
-    const legW=0.32*W, legH=0.28*H, bootH=0.075*H;
+      k = u<0.3 ? -0.45*(u/0.3) : u<0.55 ? -0.45+1.45*((u-0.3)/0.25) : 1-(u-0.55)/0.45; }
+    const hurt=e.flash>0&&e.downT===undefined;
+    const walking=e.downT===undefined&&!hurt&&!(e.stun>0);
+    const dip=walking?Math.abs(Math.sin(e.bob))*0.03*H:0;          // heavy step: the upper body sinks…
+    const roll=walking?Math.sin(e.bob)*0.02:0;                      // …and the shoulders roll
+    const sw=walking?Math.sin(e.bob)*H*0.035:0;
+    const legW=0.34*W, legH=0.28*H, bootH=0.075*H;
     const leg=(x)=>{ aBox(c,x-legW/2,-legH,legW,legH,legW*0.12,p.cloth,p);
                      aBox(c,x-legW*0.78,-bootH,legW*1.35,bootH,H*0.02,p.clothD,p); };
-    /* the UPPER BODY lives in its own frame so the step can sink it */
     const upper=(fn)=>{ c.save(); c.translate(0,dip); c.rotate(roll); fn(); c.restore(); };
-    // 1 · FAR arm + fist — behind everything; the fist peeks out by the chin (rear-hand guard)
+    // GUARD FIST — tucked by the cheek, half hidden behind the head (drops a little when hit)
+    upper(()=>{ aFist(c,-0.36*W,hurt?-0.6*H:-0.7*H,0.21*W,p); });
+    // back-shoulder bump: broad, tough silhouette
+    upper(()=>{ aBox(c,0.28*W,-0.6*H,0.34*W,0.2*H,0.1*W,p.skin,p); });
+    leg(0.2*W-sw); leg(-0.2*W+sw);
     upper(()=>{
-      aArm(c,[[0.22*W,-0.53*H],[-0.05*W,-0.38*H],[-0.36*W,-0.68*H]],aw,p);
-      aFist(c,-0.42*W,-0.7*H,fs,p);                               // half of it hides behind the head
-    });
-    // 2 · FAR leg
-    leg(0.2*W-sw);
-    // 3 · TORSO + NEAR leg
-    leg(-0.2*W+sw);
-    upper(()=>{
-      aBox(c,-0.46*W,-0.58*H,0.92*W,0.34*H,0.06*W,p.tank,p);     // the white tank
-      c.beginPath(); c.moveTo(-0.3*W,-0.58*H); c.quadraticCurveTo(-0.08*W,-0.45*H,0.14*W,-0.58*H); c.closePath();
-      aFill(c,p.skin,p);                                          // its scoop neck
-      aBelt(c,-0.48*W,-0.27*H,0.96*W,0.08*H,p,-0.06*W,p.tank);   // ▢ the light buckle
-      // 4 · HEAD
-      aBox(c,-0.4*W,-0.98*H,0.8*W,0.44*H,0.05*W,p.skin,p);
+      aBox(c,-0.5*W,-0.58*H,1.0*W,0.34*H,0.06*W,p.tank,p);       // the white tank — broad
+      c.beginPath(); c.moveTo(-0.32*W,-0.58*H); c.quadraticCurveTo(-0.08*W,-0.45*H,0.16*W,-0.58*H); c.closePath();
+      aFill(c,p.skin,p);                                          // scoop neck
+      aBelt(c,-0.52*W,-0.27*H,1.04*W,0.08*H,p,-0.06*W,p.tank);   // ▢ the light buckle
+      aBox(c,-0.4*W,-0.98*H,0.8*W,0.44*H,0.05*W,p.skin,p);       // tall head
       aBox(c,-0.45*W,-1.07*H,0.9*W,0.17*H,0.04*W,p.clothD,p);    // charcoal flat-top
-      // 5 · NEAR arm + fist — in front, elbow bent, fist up at the chest; it PUNCHES by
-      //     opening the elbow + a modest reach (not a stretch)
-      const S=[-0.28*W,-0.52*H];
-      const E=lerp2([-0.42*W,-0.32*H],[-0.64*W,-0.46*H],k);
-      const F=lerp2([-0.66*W,-0.5*H],[-1.12*W,-0.52*H],k);
-      aArm(c,[S,E,F],aw,p);
-      aFist(c,F[0],F[1],fs*1.05,p);
-      // 6 · FACE + effects
+      /* THE ACTION ARM — shoulder block + forearm as ONE silhouette */
+      const SB=[-0.59*W,-0.57*H,0.4*W,0.19*H];                    // shoulder block (x,y,w,h), on the torso's front corner
+      const S=[-0.4*W,-0.47*H];
+      const E=hurt?[-0.5*W,-0.3*H]:lerp2([-0.5*W,-0.34*H],[-0.74*W,-0.46*H],k);
+      const F=hurt?[-0.6*W,-0.36*H]:lerp2([-0.72*W,-0.5*H],[-1.08*W,-0.52*H],k);
+      const shoulder=()=>aRR(c,SB[0],SB[1],SB[2],SB[3],0.1*W);
+      const fore=()=>{ c.beginPath(); c.moveTo(S[0],S[1]); c.lineTo(E[0],E[1]); c.lineTo(F[0],F[1]); };
+      c.save(); c.lineJoin="round"; c.lineCap="round";
+      c.strokeStyle=p.ol; c.lineWidth=aw+2.8; fore(); c.stroke();          // 1) outlines…
+      c.lineWidth=c.lineWidth=Math.max(1.5,H*0.045)*2; shoulder(); c.stroke();
+      c.fillStyle=p.skin; shoulder(); c.fill();                            // 2) …then fills on top: one seamless arm
+      c.strokeStyle=p.skin; c.lineWidth=aw; fore(); c.stroke();
+      c.restore();
+      aFist(c,F[0],F[1],fs,p);
       aFace(c,-0.1*W,-0.76*H,0.66*W,p,m);
       if(k>0.6) aBurst(c,F[0],F[1],W);
     });
