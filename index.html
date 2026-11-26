@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.33 — Hex Wizard</title>
+<title>HexCap v0.34 — Square Gang</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.33 — HEX WIZARD</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.34 — SQUARE GANG</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -1639,7 +1639,8 @@ const SND={on:true,ctx:null,master:null,last:{}};
    until Sheet E (Pass 2).
    ========================================================== */
 const ART_BASE={skin:"#f0883e",skinD:"#c9652a",cloth:"#5b3a8c",clothD:"#3e2766",ol:"#1b1330",
-  gold:"#f2c14e",red:"#b8434f",metal:"#6d6f8c",metalD:"#4a4b63",cyan:"#5fd6e8",wood:"#e7b56a",mouth:"#3a1020"};
+  gold:"#f2c14e",red:"#b8434f",metal:"#6d6f8c",metalD:"#4a4b63",cyan:"#5fd6e8",wood:"#e7b56a",mouth:"#3a1020",
+  tank:"#ebe5f2",hair:"#2b1f3f",woodD:"#8a5a34",shell:"#c23a3a"};
 const ART_CACHE={};
 function artShade(hex,k){
   const n=parseInt(hex.slice(1),16);
@@ -1660,11 +1661,14 @@ function aRR(c,x,y,w,h,r){
 function aFill(c,fill,p){ c.fillStyle=fill; c.fill(); c.strokeStyle=p.ol; c.stroke(); }
 function aBox(c,x,y,w,h,r,fill,p){ aRR(c,x,y,w,h,r); aFill(c,fill,p); }
 function aDot(c,x,y,r,fill,p){ c.beginPath(); c.arc(x,y,r,0,Math.PI*2); aFill(c,fill,p); }
-/* v0.32 — Talon: "everybody feels a little lumpy… I missed their faces being more FIERCE."
-   Compared against the sheet: corners were too round (pills, not blocks), brows too thin,
-   fists were balls. Now: hard-cornered blocks, HEAVY V brows biting into the eyes, big
-   shouting mouths, square fists, chunkier boots — and the Brute rebuilt from the sheet. */
-function aFace(c,cx,cy,s,p,mood){
+/* v0.34 — ▢ THE SQUARE GANG. Talon redesigned the street in chat to match the Hex Wizard:
+   "all of our guys are square… themed." The modern era's SHAPE is the SQUARE — not their
+   bodies, their GEAR: square belt buckles on everyone, square badges, the shield's square
+   emblem + rivets, the Brute's double-square tattoo and square-studded wristbands. Everyone
+   wears purple pants + boots + a belt now, so the orange reads as SKIN, not a suit.
+   (Refs: Art/Sheet B2 - Square Gang v1–v4.png.) Kept from v0.32: hard-cornered blocks,
+   HEAVY V brows, big shouting mouths, square fists. */
+function aFace(c,cx,cy,s,p,mood,grit){
   c.save(); c.lineCap="round"; c.lineJoin="round"; c.strokeStyle=p.ol; c.fillStyle=p.ol;
   const ex1=cx-s*0.3, ex2=cx+s*0.14, ey=cy+s*0.02;
   if(mood==="stun"){                                   // ✖ ✖
@@ -1688,6 +1692,7 @@ function aFace(c,cx,cy,s,p,mood){
   c.moveTo(mx-s*0.27,my); c.lineTo(mx-s*0.1,my-s*0.04); c.lineTo(mx+s*0.08,my); c.lineTo(mx+s*0.25,my-s*0.04);
   c.lineTo(mx+s*0.18,my+s*0.25); c.lineTo(mx-s*0.2,my+s*0.25); c.closePath();
   c.fill(); c.lineWidth=Math.max(1,s*0.06); c.stroke();
+  if(grit){ c.fillStyle=p.tank; c.fillRect(mx-s*0.2,my+s*0.04,s*0.4,s*0.11); }   // gritted teeth (Shotgunner)
   c.restore();
 }
 /* square fists, like the sheet — not balls */
@@ -1703,26 +1708,51 @@ function aLegs(c,W,H,p,lw,legH,spread,ph){
   aBox(c,-spread*W-lw*W*0.78+sw,-H*0.075,lw*W*1.35,H*0.075,H*0.02,p.clothD,p);   // boots, toes forward
   aBox(c, spread*W-lw*W*0.78-sw,-H*0.075,lw*W*1.35,H*0.075,H*0.02,p.clothD,p);
 }
+/* ▢ THE ERA'S SHAPE: a gold square with a dark square inside — buckles, badges, emblems, studs */
+function aSq(c,x,y,s,p,inner){
+  c.save(); c.lineWidth=Math.max(1,s*0.35); c.lineJoin="miter";
+  c.fillStyle=p.gold; c.strokeStyle=p.ol; c.beginPath(); c.rect(x-s,y-s,2*s,2*s); c.fill(); c.stroke();
+  c.fillStyle=inner||p.clothD; c.fillRect(x-s*0.42,y-s*0.42,s*0.84,s*0.84);
+  c.restore();
+}
+/* the belt everyone wears — with the square buckle */
+function aBelt(c,x,y,w,h,p,bx){
+  c.save(); c.lineWidth=Math.max(1,h*0.3); aBox(c,x,y,w,h,h*0.2,p.clothD,p); c.restore();
+  aSq(c,bx,y+h/2,h*0.78,p);
+}
+/* small detail boxes need a thinner outline than bodies */
+function aBoxT(c,x,y,w,h,fill,p){ c.save(); c.lineWidth=1; aBox(c,x,y,w,h,Math.min(w,h)*0.15,fill,p); c.restore(); }
 /* each painter draws in a frame where (0,0) = the unit's feet, -y is up, front = -x */
 const UNIT_ART={
   mob(c,W,H,p,e,m){
-    /* the littlest guy: one squat SQUARE block on stubby legs (drawn shorter than his hitbox) */
+    /* the littlest guy: one squat square block, beanie, fists up in a guard */
     const a=e._atk||0;                                           // both fists flail forward
-    aLegs(c,W,H,p,0.34,0.22,0.22,e.bob);
-    aFist(c,0.66*W-0.8*W*a,-0.32*H-0.1*H*a,0.16*W,p);
-    aBox(c,-0.56*W,-0.74*H,1.12*W,0.54*H,0.06*W,p.skin,p);
-    aFace(c,-0.08*W,-0.52*H,0.66*W,p,m);
-    aFist(c,-0.7*W-0.35*W*a,-0.32*H+0.04*H*a,0.16*W,p);
+    aLegs(c,W,H,p,0.34,0.24,0.22,e.bob);
+    aFist(c,0.68*W-0.8*W*a,-0.44*H-0.08*H*a,0.17*W,p);
+    aBox(c,-0.56*W,-0.74*H,1.12*W,0.52*H,0.06*W,p.skin,p);
+    aBelt(c,-0.58*W,-0.3*H,1.16*W,0.09*H,p,-0.12*W);
+    aBox(c,-0.6*W,-0.9*H,1.2*W,0.22*H,0.3*W,p.cloth,p);         // beanie
+    aBox(c,-0.63*W,-0.74*H,1.26*W,0.08*H,0.03*W,p.clothD,p);    // beanie cuff
+    aFace(c,-0.08*W,-0.53*H,0.62*W,p,m);
+    aFist(c,-0.72*W-0.35*W*a,-0.44*H+0.02*H*a,0.17*W,p);
   },
   thug(c,W,H,p,e,m){
-    /* tall block, boxer's guard. v0.31: the fist was at mouth height on an arm and read as a
-       PIPE. Now no arm at all (like the sheet) — the guard fist floats chest-high, out front. */
+    /* tall block, flat-top, white tank. The guard fist is UP HIGH and out front — nowhere near
+       the mouth (v0.31's "pipe") — and the punch drives it forward and down. */
     const a=e._atk||0;
-    aLegs(c,W,H,p,0.3,0.24,0.18,e.bob);
-    aFist(c,0.56*W,-0.36*H,0.18*W,p);                             // back fist, low
-    aBox(c,-0.42*W,-1.0*H,0.84*W,0.8*H,0.05*W,p.skin,p);
-    aFace(c,-0.1*W,-0.78*H,0.66*W,p,m);
-    aFist(c,-0.8*W-0.5*W*a,-0.45*H-0.06*H*a,0.2*W,p);            // the guard → the PUNCH
+    aLegs(c,W,H,p,0.3,0.26,0.18,e.bob);
+    aFist(c,0.6*W,-0.42*H,0.18*W,p);                              // back fist, low
+    aBoxT(c,0.44*W,-0.33*H,0.32*W,0.07*H,p.clothD,p);             // its wristband
+    aBox(c,-0.42*W,-1.0*H,0.84*W,0.76*H,0.05*W,p.skin,p);
+    aBox(c,-0.42*W,-0.5*H,0.84*W,0.26*H,0.03*W,p.tank,p);        // white tank top
+    aBelt(c,-0.44*W,-0.29*H,0.88*W,0.08*H,p,-0.1*W);
+    aBox(c,-0.44*W,-1.07*H,0.88*W,0.15*H,0.03*W,p.hair,p);       // flat-top
+    aFace(c,-0.1*W,-0.76*H,0.66*W,p,m);
+    const fx=-0.86*W-0.5*W*a, fy=-0.84*H+0.3*H*a;
+    aBox(c,fx-0.13*W,fy+0.27*H,-0.34*W-(fx-0.13*W),0.11*H,0.04*W,p.skin,p);   // upper arm: elbow → body (an L-shaped boxer's guard)
+    aBox(c,fx-0.13*W,fy,0.26*W,0.38*H,0.04*W,p.skin,p);          // the raised forearm (so it's an ARM, not a floating sign)
+    aBoxT(c,fx-0.17*W,fy+0.19*W,0.34*W,0.07*H,p.clothD,p);       // wristband under the fist
+    aFist(c,fx,fy,0.2*W,p);
   },
   runner(c,W,H,p,e,m){
     c.save(); c.globalAlpha*=0.55; c.strokeStyle=p.wood; c.lineWidth=Math.max(1,H*0.035); c.lineCap="round";
@@ -1731,37 +1761,45 @@ const UNIT_ART={
     const st=Math.sin(e.bob)*H*0.08;
     aBox(c,-0.62*W+st,-0.3*H,0.3*W,0.3*H,0.05*W,p.cloth,p);      // front leg (striding)
     aBox(c, 0.2*W-st,-0.3*H,0.3*W,0.3*H,0.05*W,p.cloth,p);       // back leg
+    aBox(c,-0.74*W+st,-0.075*H,0.42*W,0.075*H,0.02*W,p.clothD,p); // boots
+    aBox(c, 0.12*W-st,-0.075*H,0.42*W,0.075*H,0.02*W,p.clothD,p);
     c.save(); c.rotate(-0.26);                                   // the LEAN: reads fast standing still
     c.save(); c.translate(0.12*W,-0.5*H); c.rotate(0.55-2.3*(e._atk||0));   // the bat — SWINGS on a hit
     aBox(c,-0.1*W,-0.95*H,0.22*W,0.95*H,0.1*W,p.wood,p); c.restore();
     aBox(c,-0.38*W,-1.0*H,0.76*W,0.74*H,0.05*W,p.skin,p);
+    aBox(c,-0.4*W,-0.48*H,0.8*W,0.22*H,0.03*W,p.cloth,p);        // purple shirt
+    aBelt(c,-0.42*W,-0.3*H,0.84*W,0.08*H,p,-0.08*W);
     aBox(c,-0.42*W,-0.99*H,0.84*W,0.16*H,0.03*W,p.red,p);       // bandana
     c.beginPath(); c.moveTo(0.38*W,-0.93*H); c.lineTo(0.8*W,-1.04*H); c.lineTo(0.7*W,-0.84*H); c.closePath(); aFill(c,p.red,p);
     aFist(c,0.1*W,-0.5*H,0.13*W,p);                               // hands on the bat
-    aFace(c,-0.12*W,-0.68*H,0.6*W,p,m);
+    aFace(c,-0.12*W,-0.7*H,0.6*W,p,m);
     c.restore();
   },
   sniper(c,W,H,p,e,m){
-    aLegs(c,W,H,p,0.22,0.5,0.16,e.bob*0.6);
-    aBox(c,-0.28*W,-0.96*H,0.56*W,0.52*H,0.05*W,p.skin,p);
+    aLegs(c,W,H,p,0.22,0.46,0.16,e.bob*0.6);
+    aBox(c,-0.28*W,-0.96*H,0.56*W,0.4*H,0.05*W,p.skin,p);
+    aBox(c,-0.3*W,-0.58*H,0.6*W,0.14*H,0.04*W,p.cloth,p);       // long-sleeve top
+    aBelt(c,-0.32*W,-0.47*H,0.64*W,0.07*H,p,-0.06*W);
     aBox(c,-0.34*W,-1.1*H,0.68*W,0.24*H,0.28*W,p.cloth,p);      // beanie
     aBox(c,-0.37*W,-0.92*H,0.74*W,0.08*H,0.02*W,p.clothD,p);
-    aFace(c,-0.02*W,-0.74*H,0.5*W,p,m);
-    aBox(c,0.02*W,-0.72*H,0.42*W,0.13*H,0.03*W,p.metalD,p);     // stock
+    aFace(c,-0.02*W,-0.76*H,0.5*W,p,m);
+    aBox(c,0.0*W,-0.73*H,0.44*W,0.14*H,0.03*W,p.woodD,p);      // wooden stock
     aBox(c,-1.7*W,-0.685*H,1.75*W,0.065*H,0.02*W,p.metal,p);    // long barrel
     aBox(c,-0.78*W,-0.8*H,0.5*W,0.09*H,0.03*W,p.metalD,p);      // scope
     aDot(c,-0.8*W,-0.755*H,0.07*W,p.cyan,p);                     // the glint
-    aFist(c,-0.2*W,-0.6*H,0.11*W,p);
+    aBoxT(c,-0.44*W,-0.6*H,0.3*W,0.07*H,p.cloth,p);              // sleeve to the fore-grip
+    aFist(c,-0.42*W,-0.63*H,0.11*W,p);
   },
   cop(c,W,H,p,e,m){
     aLegs(c,W,H,p,0.3,0.26,0.17,e.bob);
     aBox(c,-0.42*W,-0.6*H,0.84*W,0.36*H,0.04*W,p.cloth,p);      // uniform
-    c.beginPath(); const bx=0.14*W, by=-0.47*H, bs=0.08*W;     // chest badge (a little shield, like the sheet)
-    c.moveTo(bx-bs,by-bs); c.lineTo(bx+bs,by-bs); c.lineTo(bx+bs,by+bs*0.3); c.lineTo(bx,by+bs*1.2); c.lineTo(bx-bs,by+bs*0.3); c.closePath(); aFill(c,p.gold,p);
+    aSq(c,0.14*W,-0.48*H,0.08*W,p);                              // ▢ chest badge
+    aBelt(c,-0.44*W,-0.3*H,0.88*W,0.08*H,p,-0.08*W);
+    aBoxT(c,0.2*W,-0.3*H,0.16*W,0.11*H,p.clothD,p);              // pouch
     aBox(c,-0.38*W,-0.94*H,0.76*W,0.38*H,0.04*W,p.skin,p);
     aBox(c,-0.44*W,-1.07*H,0.88*W,0.17*H,0.04*W,p.cloth,p);     // cap
     aBox(c,-0.68*W,-0.93*H,0.52*W,0.06*H,0.02*W,p.clothD,p);    // brim, pointing forward
-    aDot(c,-0.04*W,-0.99*H,0.08*W,p.gold,p);                     // cap badge
+    aSq(c,-0.04*W,-0.99*H,0.09*W,p);                             // ▢ cap badge
     aFace(c,-0.1*W,-0.76*H,0.56*W,p,m);
     aBox(c,-0.86*W,-0.53*H,0.5*W,0.1*H,0.03*W,p.clothD,p);      // arm out
     aBox(c,-1.28*W,-0.58*H,0.44*W,0.11*H,0.02*W,p.metal,p);     // pistol
@@ -1769,14 +1807,16 @@ const UNIT_ART={
     aFist(c,-0.86*W,-0.49*H,0.11*W,p);
   },
   gunner(c,W,H,p,e,m){
-    aLegs(c,W,H,p,0.34,0.22,0.24,e.bob);
-    aBox(c,0.36*W,-0.76*H,0.3*W,0.36*H,0.06*W,p.skin,p);        // back arm — a block, not a ball
+    aLegs(c,W,H,p,0.34,0.24,0.24,e.bob);
+    aBox(c,0.36*W,-0.76*H,0.3*W,0.36*H,0.06*W,p.skin,p);        // back arm
     aBox(c,-0.5*W,-0.98*H,1.0*W,0.6*H,0.05*W,p.skin,p);
-    aBox(c,-0.5*W,-0.5*H,1.0*W,0.3*H,0.03*W,p.cloth,p);         // vest
-    for(let i=0;i<4;i++) aBox(c,(-0.3+i*0.16)*W,-0.28*H,0.1*W,0.07*H,0.01*W,p.gold,p);   // shells
+    aBox(c,-0.5*W,-0.52*H,1.0*W,0.26*H,0.03*W,p.clothD,p);      // dark vest
+    aBelt(c,-0.52*W,-0.3*H,1.04*W,0.08*H,p,-0.12*W);
+    for(let i=0;i<3;i++){ const sx=(0.06+i*0.13)*W;              // red shells, gold caps, on the belt
+      aBoxT(c,sx,-0.31*H,0.1*W,0.13*H,p.shell,p); aBoxT(c,sx,-0.31*H,0.1*W,0.04*H,p.gold,p); }
     aBox(c,-0.53*W,-0.99*H,1.06*W,0.16*H,0.03*W,p.red,p);       // bandana
     c.beginPath(); c.moveTo(0.48*W,-0.92*H); c.lineTo(0.88*W,-1.0*H); c.lineTo(0.78*W,-0.82*H); c.closePath(); aFill(c,p.red,p);
-    aFace(c,-0.12*W,-0.74*H,0.64*W,p,m);
+    aFace(c,-0.12*W,-0.74*H,0.64*W,p,m,true);                    // gritted teeth
     aBox(c,0.0*W,-0.52*H,0.42*W,0.14*H,0.03*W,p.metalD,p);      // stock
     aBox(c,-1.2*W,-0.5*H,1.25*W,0.1*H,0.02*W,p.metal,p);        // short heavy barrel
     aBox(c,-0.85*W,-0.43*H,0.3*W,0.08*H,0.02*W,p.metalD,p);     // pump
@@ -1784,51 +1824,57 @@ const UNIT_ART={
     aFist(c,0.1*W,-0.44*H,0.13*W,p);                             // back hand on the grip
   },
   shield(c,W,H,p,e,m){
-    aLegs(c,W,H,p,0.28,0.22,0.16,e.bob);
-    aBox(c,0.16*W,-0.72*H,0.36*W,0.26*H,0.06*W,p.cloth,p);      // armoured shoulder — a block
+    aLegs(c,W,H,p,0.28,0.24,0.16,e.bob);
+    aBox(c,0.16*W,-0.72*H,0.36*W,0.26*H,0.06*W,p.cloth,p);      // armoured shoulder
+    aSq(c,0.34*W,-0.6*H,0.07*W,p);                               // ▢ insignia
     aBox(c,-0.32*W,-0.88*H,0.72*W,0.56*H,0.05*W,p.skin,p);
+    aBox(c,-0.32*W,-0.5*H,0.72*W,0.22*H,0.03*W,p.cloth,p);      // armour vest
+    aBelt(c,-0.34*W,-0.3*H,0.76*W,0.07*H,p,0.12*W);
     aBox(c,-0.36*W,-1.03*H,0.78*W,0.3*H,0.26*W,p.cloth,p);      // helmet
+    aSq(c,0.26*W,-0.87*H,0.07*W,p);                              // ▢ ear piece
     aBox(c,-0.4*W,-0.87*H,0.58*W,0.09*H,0.02*W,p.gold,p);       // visor stripe
     aFace(c,-0.08*W,-0.66*H,0.48*W,p,m);
     if(e.shieldHp>0){                                            // the plate — gone when you break it
       const bx=-0.3*W*(e._atk||0);                               // SHIELD BASH
       aBox(c,-0.74*W+bx,-0.86*H,0.58*W,0.84*H,0.05*W,p.metal,p);
       aBox(c,-0.68*W+bx,-0.8*H,0.46*W,0.72*H,0.03*W,p.metalD,p);
-      for(const [rx,ry] of [[-0.62,-0.74],[-0.28,-0.74],[-0.62,-0.14],[-0.28,-0.14]]) aDot(c,rx*W+bx,ry*H,0.035*W,p.metal,p);   // rivets
-      c.beginPath(); const sx=-0.45*W+bx, sy=-0.5*H, s=0.13*W;
-      c.moveTo(sx-s,sy-s); c.lineTo(sx+s,sy-s); c.lineTo(sx+s,sy+s*0.2); c.lineTo(sx,sy+s*1.1); c.lineTo(sx-s,sy+s*0.2); c.closePath();
-      aFill(c,p.gold,p);
+      for(const [rx,ry] of [[-0.62,-0.74],[-0.28,-0.74],[-0.62,-0.14],[-0.28,-0.14]])   // square rivets
+        aBoxT(c,rx*W+bx-0.035*W,ry*H-0.035*W,0.07*W,0.07*W,p.metal,p);
+      aSq(c,-0.45*W+bx,-0.46*H,0.13*W,p);                        // ▢ the emblem
     } else {
       aBox(c,-0.7*W,-0.5*H,0.45*W,0.12*H,0.03*W,p.skin,p);
       aFist(c,-0.72*W,-0.44*H,0.13*W,p);
     }
   },
   brute(c,W,H,p,e,m){
-    /* v0.32 — rebuilt from the sheet: the hunched blob is gone. Big V torso in a tank top,
-       small square head, gold chain, arms like posts hanging to big square fists. */
+    /* V torso in a tank top, small square head, gold chain with a SQUARE pendant, a
+       double-square tattoo, wristbands studded with squares, a big square buckle */
     const a=e._atk||0;
     aLegs(c,W,H,p,0.32,0.28,0.25,e.bob*0.7);
-    aBox(c,0.48*W,-0.86*H,0.36*W,0.5*H,0.08*W,p.skin,p);        // back arm
-    aBox(c,0.46*W,-0.44*H,0.4*W,0.08*H,0.02*W,p.clothD,p);      // wristband
-    aFist(c,0.66*W,-0.3*H,0.17*W,p);
+    aBox(c,0.44*W,-0.86*H,0.44*W,0.5*H,0.1*W,p.skin,p);         // back arm — massive
+    aBoxT(c,0.42*W,-0.44*H,0.48*W,0.08*H,p.clothD,p);           // wristband
+    aSq(c,0.56*W,-0.4*H,0.045*W,p); aSq(c,0.76*W,-0.4*H,0.045*W,p);
+    aFist(c,0.66*W,-0.3*H,0.19*W,p);
     c.beginPath(); c.moveTo(-0.64*W,-0.9*H); c.lineTo(0.64*W,-0.9*H); c.lineTo(0.42*W,-0.3*H); c.lineTo(-0.42*W,-0.3*H); c.closePath();
     aFill(c,p.skin,p);                                           // the V torso
     c.beginPath(); c.moveTo(-0.3*W,-0.84*H); c.lineTo(0.3*W,-0.84*H); c.lineTo(0.42*W,-0.3*H); c.lineTo(-0.42*W,-0.3*H); c.closePath();
-    aFill(c,p.cloth,p);                                          // tank top
-    aBox(c,0.36*W,-0.96*H,0.54*W,0.26*H,0.16*W,p.skin,p);        // back shoulder cap: ties the arm on
-    aBox(c,-0.47*W,-0.35*H,0.94*W,0.09*H,0.02*W,p.clothD,p);    // belt
-    aBox(c,-0.1*W,-0.36*H,0.2*W,0.11*H,0.02*W,p.gold,p);        // buckle
+    aFill(c,p.clothD,p);                                         // tank top
+    aBox(c,0.32*W,-0.92*H,0.58*W,0.3*H,0.14*W,p.skin,p);        // back shoulder — huge, sits BELOW the head, ties the arm on
+    c.save(); c.strokeStyle=p.cloth; c.lineWidth=Math.max(1,W*0.03); c.lineJoin="miter";   // ▢▢ the double-square tattoo
+    c.strokeRect(0.53*W,-0.85*H,0.2*W,0.2*W); c.strokeRect(0.59*W,-0.85*H+0.06*W,0.08*W,0.08*W); c.restore();
+    aBelt(c,-0.47*W,-0.36*H,0.94*W,0.1*H,p,0);                  // ▢ the big buckle
     aBox(c,-0.38*W,-1.04*H,0.6*W,0.34*H,0.04*W,p.skin,p);       // small square head
     aFace(c,-0.1*W,-0.88*H,0.52*W,p,m);
     c.save(); c.fillStyle=p.gold; c.strokeStyle=p.ol; c.lineWidth=Math.max(1,H*0.015);   // the chain
     for(let i=0;i<7;i++){ c.beginPath(); c.arc((-0.36+i*0.12)*W,-0.72*H+Math.sin(i/6*Math.PI)*H*0.07,0.045*W,0,Math.PI*2); c.fill(); c.stroke(); }
     c.restore();
+    aSq(c,0,-0.6*H,0.08*W,p);                                    // ▢ square pendant
     c.save(); c.translate(-0.62*W,-0.84*H); c.rotate(1.35*a); c.translate(0.62*W,0.84*H);   // the haymaker
-    aBox(c,-0.86*W,-0.86*H,0.36*W,0.5*H,0.08*W,p.skin,p);       // front arm
-    aBox(c,-0.92*W,-0.96*H,0.54*W,0.26*H,0.16*W,p.skin,p);       // front shoulder cap
-    aBox(c,-0.88*W,-0.44*H,0.4*W,0.08*H,0.02*W,p.clothD,p);     // wristband
-    for(let i=0;i<3;i++) aDot(c,(-0.8+i*0.12)*W,-0.4*H,0.03*W,p.gold,p);
-    aFist(c,-0.68*W,-0.3*H,0.17*W,p);
+    aBox(c,-0.88*W,-0.86*H,0.44*W,0.5*H,0.1*W,p.skin,p);        // front arm — massive
+    aBox(c,-0.92*W,-0.92*H,0.58*W,0.3*H,0.14*W,p.skin,p);       // front shoulder
+    aBoxT(c,-0.9*W,-0.44*H,0.48*W,0.08*H,p.clothD,p);           // wristband
+    aSq(c,-0.78*W,-0.4*H,0.045*W,p); aSq(c,-0.58*W,-0.4*H,0.045*W,p);
+    aFist(c,-0.66*W,-0.3*H,0.19*W,p);
     c.restore();
   }
 };
@@ -3169,9 +3215,9 @@ function draw(){
 
   ctx.globalAlpha=P.hidden?0.55:1;
   if(P.hurtT>0&&Math.floor(P.hurtT*22)%2===0) ctx.globalAlpha*=0.35;
-  drawWizard(ppx);                                  // 🧙 v0.31: Sheet A
-  ctx.fillStyle=ARMS[P.sel].col; ctx.font="bold 11px Verdana"; ctx.textAlign="center";
-  ctx.globalAlpha*=0.7; ctx.fillText(P.face>0?"▶":"◀",ppx+P.face*25,GROUND-10);   // facing is a commitment — keep the tell
+  drawWizard(ppx);                                  // ⬡ the Hex Wizard
+  /* v0.34: the ▶/◀ facing arrow is gone (Talon: "it looks pretty obvious" — the jewel,
+     the brim and the motion lines all say which way he faces now) */
   ctx.globalAlpha=1;
 
   for(const p of parts){
