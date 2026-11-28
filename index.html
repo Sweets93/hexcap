@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.47 — Save & Continue</title>
+<title>HexCap v0.48 — Boss Fairness</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -307,7 +307,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.47 — SAVE &amp; CONTINUE</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.48 — BOSS FAIRNESS</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -1067,13 +1067,15 @@ function doorsForBlock(b){
                spent:false, w:46, vendor:false, roll:hash32(b*313+7)});
     /* THE DOOR sits just before the cage mouth — this IS the block's vendor */
     /* right at the line: buy, step out, and it's on you */
-    list.push({x:start+len*0.95,locked:false,known:true,looted:true,spent:false,
+    /* v0.48 — THE DOOR now waits just OUTSIDE the cage's left wall: shop, walk to the line,
+       and the cage is a clean stage of three evenly spaced doorways (Talon). */
+    list.push({x:start+len-TUNE.arenaWide-110,locked:false,known:true,looted:true,spent:false,
                w:54,vendor:true,roll:1});
     /* v0.21: which cover door is locked is RANDOM per boss — "the middle one is
        always locked" turned a gamble into a memorized fact. */
     const lockI=Math.floor(hash32(b*719+3)*3)%3;
     for(let i=0;i<3;i++)                        // three COVER doors inside the cage
-      list.push({x:start+len*(0.765+i*0.078), locked:i===lockI, known:false,
+      list.push({x:start+len-TUNE.arenaWide+TUNE.arenaWide*(i+1)/4, locked:i===lockI, known:false,   // v0.48: left · middle · right
                  looted:false, spent:false, w:46, vendor:false,
                  roll:hash32(b*313+i*29+13)});
     doors.set(b,list); return list;
@@ -1569,7 +1571,7 @@ function armBoss(b){
      stopped you — cause and effect in the wrong order. Now you walk, you
      reach the district line, and THAT is what seals the street.
      (Talon, 2026-11-11.) */
-  arena.trigger=b*TUNE.blockLen+TUNE.blockLen-18-24;
+  arena.trigger=b*TUNE.blockLen+TUNE.blockLen-24;          // v0.48: the wall IS the block line
   arena.block=b;
 }
 /* the cage closes: the wall drops AHEAD at the district line,
@@ -1581,7 +1583,7 @@ function startBoss(){
   /* a fixed ~820px cage, not a fraction of the block: narrow enough that BOTH
      barriers are on screen at once, so it reads as a cage instead of "a long
      street with a wall somewhere behind me". (Talon, 2026-11-11.) */
-  const hi=b*len+len-18, lo=hi-TUNE.arenaWide;
+  const hi=b*len+len, lo=hi-TUNE.arenaWide;      // v0.48 (Talon): the arena line sits ON the block line
   /* 🧟 v0.25: he waits at the FAR end of the cage (Talon), not right behind you.
      You walked in from the left and the cage closed ahead of you, so you're at
      the right wall — he's across the whole arena. Room to read him. */
@@ -2673,7 +2675,7 @@ function breacherStep(e,dt){
       e.hitCD=TUNE.bossSwing; P.hp-=(e.dmg||e.def.dmg); P.hurtT=0.45; shake=1;
       P.entryT=0; P.entryDoor=null;
       floats.push({x:P.x,y:GROUND-66,txt:"-"+(e.dmg||e.def.dmg),col:"#ff6b8b",t:0.8,vy:-34});
-      if(P.hp<=0) die();
+      if(P.hp<=0) die(); else trample(e);                  // 🐂 v0.48
     }
     e.chargeT-=dt;
     if(e.chargeT<=0&&!P.hidden){
@@ -2706,25 +2708,51 @@ function breacherStep(e,dt){
   }
   e.x=Math.max(arena.lo+half,Math.min(arena.hi-half,e.x));   // a boss never leaves its cage
 }
-/* 🎖️ THE MARSHAL — RETURN TO SENDER. In his fight, a swatted rifle round flies
-   back home. Three cracks break his armor → a damage window. Pure skill, built
-   entirely from the hex you already have — and Ward (multi-swat) feeds it.
-   (Talon: "that's genius… super fun.") */
-function returnToSender(b){
-  const m=b&&b.owner;
+/* 🔁 v0.48 — EVERY SWATTED ROUND FLIES BACK. Talon: "why are the Marshal's bullets the only
+   ones that reflect?… that's the risk ranged units take." A swatted round becomes YOUR bolt:
+   same damage, a little faster, and it hits whatever it meets on the way home — kills pay.
+   🎖️ In the Marshal fight a round that actually REACHES him cracks his armor (Return to
+   Sender, for real now): three cracks → ARMOR BROKEN → he's DAZED for the whole window. */
+function reflectBullet(b){
+  bolts.push({x:b.x,y:b.y,dir:-b.dir,t:2.4,spd:Math.max(380,(b.spd||400)*1.25),dmg:b.dmg||1,
+              pierce:false,maxHits:1,col:"#c08bff",hits:[],reflect:true});
+}
+function marshalCrack(m){
   if(!m||!m.isBoss||m.hp<=0||!arena.active||m.def.trait!=="advance") return;
-  zaps.push({x1:b.x,y1:b.y,x2:m.x,y2:GROUND-m.def.h*0.5,t:0.2});
   if((m.vulnT||0)>0) return;                       // already open — just enjoy it
   m.cracks=(m.cracks||0)+1; m.flash=0.2;
   if(!SIM){ puff(m.x,GROUND-m.def.h*0.5,"#c08bff",8);
     floats.push({x:m.x,y:GROUND-m.def.h-14,txt:"RETURN TO SENDER! "+m.cracks+"/"+TUNE.crackNeed,col:"#c08bff",t:1.1,vy:-26}); }
   sfx("crack");
   if(m.cracks>=TUNE.crackNeed){
-    m.cracks=0; m.vulnT=TUNE.armorWindow; m.stun=Math.max(m.stun,0.8);
+    /* v0.48 — "stunned means stunned": DAZED for the WHOLE window (no shots, barely moving),
+       long enough to land a Doom. It used to be 0.8s of stun while he kept firing. */
+    m.cracks=0; m.vulnT=TUNE.armorWindow; m.daze=TUNE.armorWindow; m.stun=Math.max(m.stun,TUNE.armorWindow);
+    m.volleyQ=0; m.aim=0;
     if(!SIM){ shake=1; puff(m.x,GROUND-m.def.h*0.5,"#ffd166",18);
       floats.push({x:m.x,y:GROUND-m.def.h-34,txt:"ARMOR BROKEN — HIT HIM!",col:"#5ec27a",t:1.6,vy:-22,big:true}); }
     sfx("armorBreak");
   }
+}
+/* 🎖️ v0.48 — one BEAT of the Marshal's volley: 1 round (plain) or 2 stacked (Veteran+) */
+function marshalBeat(e,R){
+  const per=e.volleyPer||1;
+  for(let k=0;k<per;k++)
+    ebolts.push({x:e.x+e.facing*16,y:GROUND-34-k*9,dir:e.facing,
+                 spd:R.spd,dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
+}
+/* 🐂 v0.48 — TRAMPLED. You can't stroll through a boss, but when his hit LANDS you're thrown
+   through to his other side: take the hit, get past him. (Talon: dying because "I forgot to
+   get in the door and it pushed me into the wall and smashed me" — doors are strategy, never
+   necessity.) If there's no room behind him, you stay put. */
+function trample(e){
+  if(!arena.active||!e||!e.isBoss) return;
+  const gap=e.def.w*0.5+12, side=(P.x>=e.x)?1:-1;
+  const nx=Math.max(arena.lo+10,Math.min(arena.hi-10,e.x-side*(gap+26)));
+  if(Math.abs(nx-e.x)<gap) return;
+  P.x=nx; arena.side=-side; P.entryT=0; P.entryDoor=null;
+  if(!SIM){ puff(P.x,GROUND-40,"#cfd6df",10);
+    floats.push({x:P.x,y:GROUND-96,txt:"TRAMPLED!",col:"#ffd166",t:1.0,vy:-24,big:true}); }
 }
 function hitEnemy(e,dmg,fromDir,isHex,src){
   /* fromDir = the direction the attack TRAVELS.
@@ -2869,7 +2897,7 @@ function step(dt){
       if(tBullet){
         tBullet.t=-1; led.pop++;
         puff(endX,endY,"#9646dc",8);
-        returnToSender(tBullet);                         // 🎖️ v0.25
+        reflectBullet(tBullet);                          // 🔁 v0.48: it flies back
         sfx("swat");
         /* 🛡️ v0.24 WARD — each level swats one MORE round in reach, nearest first.
            Without it, a Shotgunner's spread is a door-or-bleed problem (on purpose). */
@@ -2882,7 +2910,7 @@ function step(dt){
             b.t=-1; led.pop++;
             zaps.push({x1:P.x+P.face*38,y1:GROUND-28,x2:b.x,y2:b.y,t:0.1});
             puff(b.x,b.y,"#9646dc",6);
-            returnToSender(b);                           // 🎖️ v0.25: Ward feeds the Marshal fight
+            reflectBullet(b);                            // 🔁 v0.48: every swatted round flies back
           }
         }
         floats.push({x:tBullet.x,y:endY-14,txt:more.length?"SWAT ×"+(1+more.length)+"!":"SWAT!",col:"#c08bff",t:0.6,vy:-30});
@@ -3067,7 +3095,8 @@ function step(dt){
           shake=Math.min(1,shake+0.2); b.t=-1; break;
         }
         b.hits.push(e); puff(b.x,b.y,b.doom?"#b06bff":"#fff",b.doom?14:4);
-        hitEnemy(e,b.dmg,b.dir,false,"rune");
+        if(b.reflect&&e.isBoss&&arena.active&&e.def.trait==="advance") marshalCrack(e);   // 🎖️ it got home
+        hitEnemy(e,b.dmg,b.dir,false,b.reflect?"swat":"rune");
         if(b.doom&&!SIM) floats.push({x:e.x,y:GROUND-e.def.h-20,txt:"DOOM",col:"#b06bff",t:0.9,vy:-30,big:true});
         if(b.doom) sfx("boom",{big:true});
         if(b.hits.length>=(b.maxHits||1)){ b.t=-1; break; }
@@ -3112,6 +3141,7 @@ function step(dt){
     if(e.atkT>0) e.atkT=Math.max(0,e.atkT-dt);
     if(e.fireT>0) e.fireT=Math.max(0,e.fireT-dt);                // 🎨 v0.41: muzzle flash + recoil (looks only)
     e.stun=Math.max(0,e.stun-dt); e.bob+=dt*6;
+    if(e.daze>0) e.daze=Math.max(0,e.daze-dt);                   // 😵 v0.48: a BIG stun (not hex stagger)
     if(e.laneCD>0) e.laneCD-=dt;
     if(e.turnCD>0) e.turnCD-=dt;
     if(e.grace>0){ e.grace-=dt; e.aim=0; e.hitCD=Math.max(e.hitCD,e.grace); }
@@ -3154,38 +3184,37 @@ function step(dt){
     }
 
     if(R){
+      /* 😵 v0.48 — STUNNED MEANS STUNNED: a dazed boss doesn't aim, fire, or finish a volley.
+         (Only BIG stuns daze — a hex's stagger doesn't, or spamming hex would mute him.) */
+      const dazed=e.isBoss&&e.daze>0;
+      if(dazed){ e.aim=0; e.volleyQ=0; }
       if(dist>R.hold) e.x+=e.facing*spd*slow*dt;   // hold:0 = never stops walking
-      if(e.isBoss&&dist<e.def.w*0.5+16&&e.hitCD<=0){      // a boss still crushes you
+      if(e.isBoss&&!dazed&&dist<e.def.w*0.5+16&&e.hitCD<=0){      // a boss still crushes you…
         e.hitCD=TUNE.bossSwing; P.hp-=(e.dmg||e.def.dmg); P.hurtT=0.45; shake=1;
         floats.push({x:P.x,y:GROUND-66,txt:"-"+(e.dmg||e.def.dmg),col:"#ff6b8b",t:0.8,vy:-34});
-        if(P.hp<=0) die();
+        if(P.hp<=0) die(); else trample(e);                // …and you come out the other side
       }
       if(e.volleyQ>0){                                   // 🎖️ v0.26: the rest of the volley, one beat apart
         e.volleyT-=dt;
         if(e.volleyT<=0){
-          ebolts.push({x:e.x+e.facing*16,y:GROUND-34,dir:e.facing,
-                       spd:R.spd,dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
+          marshalBeat(e,R);                                // 🎖️ v0.48: 1 or 2 a beat
           e.volleyQ--; e.volleyT=TUNE.volleyGap; sfxAt("eshot",e.x);
           if(!SIM) puff(e.x+e.facing*18,GROUND-34,"#ffd9a0",3);
         }
       }
-      if(e.facing===want){
+      if(e.facing===want&&!dazed){
         if(e.aim>0){
           e.aim-=dt;
           if(e.aim<=0){
-            /* 🎖️ v0.25: the Marshal fires more each phase (1 → 2 → 3) — more danger,
-               and more rounds to send home. Every round remembers who fired it. */
-            const shots=R.shots+((e.isBoss&&e.def.trait==="advance")?((e.phase||1)-1):0);
-            /* 🎖️ v0.26 — the Marshal's volley is SPACED (TUNE.volleyGap > the hex
-               recharge), so a sharp player can swat every round one by one and
-               Ward just makes it easier. Talon: 1→2→3 rounds vs one swat was a
-               "forced upgrade." Now it's a skill moment. Other guns stay a spread. */
-            if(e.isBoss&&e.def.trait==="advance"&&shots>1){
-              ebolts.push({x:e.x+e.facing*16,y:GROUND-34,dir:e.facing,
-                           spd:R.spd,dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
-              e.volleyQ=shots-1; e.volleyT=TUNE.volleyGap;
+            /* 🎖️ v0.48 — THE MARSHAL'S RHYTHM. Talon: "just bam, bam, bam… a pattern." ALWAYS
+               three evenly spaced beats, every volley, every phase: one round a beat as a
+               plain boss (1-1-1), TWO a beat from Veteran up (2-2-2: swatting both needs Ward).
+               Other guns keep their spread. */
+            if(e.isBoss&&e.def.trait==="advance"){
+              e.volleyPer=e.def.rankName?2:1;
+              marshalBeat(e,R); e.volleyQ=2; e.volleyT=TUNE.volleyGap;
             } else
-            for(let s=0;s<shots;s++)
+            for(let s=0;s<R.shots;s++)
               ebolts.push({x:e.x+e.facing*16,y:GROUND-34-(s-1)*7,dir:e.facing,
                            spd:R.spd*(1+(s-1)*0.06),dmg:(e.dmg||R.dmg),t:3.2,col:"#ffb3b3",owner:e});
             e.reload=R.cool; shake=Math.min(1,shake+0.15); sfxAt("eshot",e.x);
@@ -3200,13 +3229,13 @@ function step(dt){
       }
     } else {
       e.x+=e.facing*spd*slow*dt;
-      if(dist<e.def.w*0.5+14&&e.hitCD<=0){
+      if(dist<e.def.w*0.5+14&&e.hitCD<=0&&!(e.isBoss&&e.daze>0)){
         e.hitCD=0.85; P.hp-=(e.dmg||e.def.dmg); P.hurtT=0.45; shake=1;
         e.atkT=0.3;                                // 🎨 v0.31: swing! (punch / bat / bash) — looks only
         P.entryT=0;P.entryDoor=null;
         if(P.pickP>0){ P.pickP=Math.max(0.0001,P.pickP-TUNE.pickSetback/100); P.pickFlash=0.4; }
         floats.push({x:P.x,y:GROUND-66,txt:"-"+(e.dmg||e.def.dmg),col:"#ff6b8b",t:0.8,vy:-34});
-        if(P.hp<=0) die();
+        if(P.hp<=0) die(); else if(e.isBoss) trample(e);   // 🐂 v0.48
       }
     }
     if(!e.isBoss && e.x<P.maxX-2200) e.hp=-99;   // a boss never wanders off
@@ -3312,7 +3341,7 @@ function die(){
        near you is snuffed. You get a real breath — not just a delay. */
     for(const e of enemies){
       const dx=e.x-P.x; if(Math.abs(dx)>=320) continue;
-      e.stun=Math.max(e.stun,1.8);
+      e.stun=Math.max(e.stun,1.8); if(e.isBoss) e.daze=Math.max(e.daze||0,1.8);   // v0.48
       const s=dx===0?(Math.random()<0.5?-1:1):Math.sign(dx);
       if(Math.abs(dx)<240) e.x=P.x+s*(240+Math.random()*40);
       if(arena.active) e.x=Math.max(arena.lo+e.def.w*0.5,Math.min(arena.hi-e.def.w*0.5,e.x));
