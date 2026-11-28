@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.49 — Late Game</title>
+<title>HexCap v0.50 — Door Save Fix</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -307,7 +307,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.49 — LATE GAME</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.50 — DOOR SAVE FIX</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -1080,7 +1080,7 @@ let doors=new Map();
    block 19 and another on block 20. (Talon, 2026-11-11.) */
 function isVendorBlock(b){ return (b+1)%vendEvery()===0; }
 function blocksToVendor(b){ const V=vendEvery(); return (V-((b+1)%V))%V; }
-function doorsForBlock(b){
+function doorsForBlockRaw(b){
   if(doors.has(b)) return doors.get(b);
   const list=[],len=TUNE.blockLen,start=b*len;
   /* A BOSS BLOCK IS BUILT, NOT ROLLED: THE DOOR at the mouth so you can always
@@ -1120,6 +1120,29 @@ function doorsForBlock(b){
   if(isVendorBlock(b)) list.push({x:start+len*0.95,locked:false,known:true,looted:true,
                                   spent:false,w:54,vendor:true,roll:1});
   doors.set(b,list); return list;
+}
+/* 💾 v0.50 — DOORS REMEMBER. Talon found it: Save & Quit kept your coins and runes, but the
+   street was rebuilt fresh on Continue, so every door had its stash again (he farmed block 2
+   up to 600 coins and 17 fireballs). Now the save carries every door's state across the whole
+   street (you can walk back into earlier blocks, so all of it), and a continued run gets each
+   door back exactly as it was: looted stays looted, a used shop stays used. */
+let DOOR_RESTORE=null;
+function doorsForBlock(b){
+  const had=doors.has(b), list=doorsForBlockRaw(b);
+  if(!had&&DOOR_RESTORE&&DOOR_RESTORE[b]){
+    const code=DOOR_RESTORE[b];
+    list.forEach((d,i)=>{ const f=parseInt(code[i]||"0",16);
+      d.looted=!!(f&1); d.spent=!!(f&2); if(f&4) d.locked=false; d.known=!!(f&8); });
+  }
+  return list;
+}
+function doorSnap(){                       // one hex digit per door: looted · spent · unlocked · known
+  const o={};
+  for(const [b,list] of doors){
+    o[b]=list.map(d=>((d.looted?1:0)|(d.spent?2:0)|(d.locked?0:4)|(d.known?8:0)).toString(16)).join("");
+  }                                        // every visited block: ~2KB even for a 130-block run
+  if(DOOR_RESTORE) for(const b in DOOR_RESTORE) if(!(b in o)&&!doors.has(+b)) o[b]=DOOR_RESTORE[b];   // keep blocks not revisited yet
+  return o;
 }
 function nearbyDoor(px){
   const b=Math.floor(px/TUNE.blockLen); let best=null,bd=1e9;
@@ -4455,7 +4478,7 @@ const SAVE_KEY="hexcap_run";
 function runSnap(){
   return {v:1,block:blockIdx,hp:P.hp,coin:P.coin,runes:Object.assign({},P.runes),pots:P.pots,
     wind:!!P.wind,sel:P.sel,kills,led:Object.assign({},led),banked:RUN.banked,paid:RUN.paid,
-    bossDone:isBossBlock(blockIdx)&&!arena.pending&&!arena.active,at:Date.now()};
+    bossDone:isBossBlock(blockIdx)&&!arena.pending&&!arena.active,doors:doorSnap(),at:Date.now()};
 }
 function saveRun(){
   if(SIM||!RUN.live||dead||!P) return;
@@ -4474,7 +4497,7 @@ function payOutSave(r){
 }
 function startNewRun(startAt){
   const r=loadSave(); if(r) payOutSave(r);           // abandoning a saved run still pays what it earned
-  clearSave(); reset(); RUN.live=true;
+  clearSave(); DOOR_RESTORE=null; reset(); RUN.live=true;
   /* 🏁 v0.49 CHECKPOINT STARTS — begin at the block after any boss you've beaten (11, 21, 31…).
      No extra gear: your SIGILS are what make a late start survivable. Sigils only count for
      blocks PAST the start (the run is "pre-paid" up to it), so it can't be farmed. */
@@ -4489,7 +4512,7 @@ function startNewRun(startAt){
 function startChoices(){ const out=[]; for(let b=11;b<=META.deepest;b+=10) out.push(b); return out; }
 function continueRun(){
   const r=loadSave(); if(!r){ startNewRun(); return; }
-  reset(); RUN.live=true; RUN.banked=r.banked|0; RUN.paid=r.paid|0;
+  reset(); DOOR_RESTORE=r.doors||null; RUN.live=true; RUN.banked=r.banked|0; RUN.paid=r.paid|0;
   blockIdx=Math.max(0,r.block|0);
   const x=blockIdx*TUNE.blockLen+40; P.x=P.maxX=lastX=x; cam=Math.max(0,x-VW*0.42);
   P.runes=Object.assign({ember:0,lance:0,doom:0},r.runes||{});
