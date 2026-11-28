@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.46 — Quick Fixes</title>
+<title>HexCap v0.47 — Save & Continue</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -298,12 +298,16 @@
   .sig button:disabled{background:#2f3550;color:#6f6b85;cursor:default}
   #sigClose{margin-top:4px}
   #sigWipe{background:none;border:0;color:#4a5176;font-size:10px;margin-top:8px;text-decoration:underline}
+  /* 💾 v0.47 — on the TITLE the run HUD is meaningless (it shows the backdrop run): hide it,
+     keep only the sound + fullscreen buttons */
+  body.titleView #hud .stat, body.titleView #sigBtn, body.titleView #pauseBtn, body.titleView #banner{visibility:hidden}
+  @media (max-height:360px){ #title .tagline{display:none} #title h2{font-size:28px!important} }
 </style>
 </head>
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.46 — QUICK FIXES</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.47 — SAVE &amp; CONTINUE</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -356,6 +360,7 @@
     <div class="panel" id="pz"><h2>PAUSED</h2>
       <div class="res">Take your time. Nothing's moving.</div>
       <button class="btn" id="resume">RESUME</button>
+      <button class="btn" id="quitBtn" style="background:#3a3752;color:#e8e6f0;font-size:13px;padding:8px 14px;margin-top:6px">💾 SAVE &amp; QUIT TO MENU</button>
       <div id="ctrlRow">
         <span>Controls:</span>
         <button class="btn" id="ctrlMode" style="padding:6px 12px;font-size:12px">🕹️ SLIDE</button>
@@ -377,8 +382,20 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
         <button class="btn" id="again">RUN AGAIN</button>
         <button class="btn" id="toSig" style="background:#c08bff">🔮 SIGILS</button>
+        <button class="btn" id="toMenu" style="background:#3a3752;color:#e8e6f0">MENU</button>
       </div></div>
 
+    <!-- 💾 v0.47 THE TITLE SCREEN — New Run · Continue · Sigils -->
+    <div class="panel" id="title">
+      <h2 style="font-size:38px;letter-spacing:5px;color:#e8e6f0">⬡ HEX<span style="color:#c08bff">CAP</span></h2>
+      <div class="res tagline" style="color:#8e89a8;font-style:italic">A wizard pushes up an endless street, hunted from both sides.</div>
+      <div class="res" id="titleStats"></div>
+      <div style="display:flex;flex-direction:column;gap:9px;align-items:center;margin-top:6px">
+        <button class="btn" id="tContinue" style="min-width:240px">▶ CONTINUE</button>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:center">
+          <button class="btn" id="tNew" style="min-width:150px">▶ NEW RUN</button>
+          <button class="btn" id="tSig" style="min-width:150px;background:#c08bff">🔮 SIGILS</button></div>
+      </div></div>
     <div class="panel" id="sig">
       <h2>🔮 SIGILS</h2>
       <div id="sigHead"></div>
@@ -584,6 +601,7 @@ const TUNE = {
      Talon's original number was 10. It was the right one. */
   bossFrom:10, bossEvery:10, bossHpMult:1, summonEvery:5.5, kiteNear:185,
   bossSwing:1.15, arenaWide:820, bossGrace:1.4, bossCard:2.4,
+  bossSigils:5,     // 🔮 v0.47: the bonus a boss drops ON TOP of banking the run's sigils
   /* 🧟 v0.25 boss tricks — every number a slider */
   bossGuard:0.25, bossWindowMult:1.5, breachStunMult:2,
   /* v0.26: Breacher slowed "a teeny bit" (Talon nearly got caught WITH Quickstep):
@@ -962,7 +980,9 @@ function lancePierce(){ return TUNE.lancePierce + 2*upg("deeplance"); }
    1–5 → 0 · 6 → 1 · 8 → 3 · 10 → 7 · 12 → 11 · 15 → 19 · 20 → 32            */
 const SIGIL_FREE_BLOCKS=4;
 function sigilsFor(block){
-  return Math.max(0, Math.floor(Math.pow(Math.max(0,block-SIGIL_FREE_BLOCKS),1.6)/2.5));
+  /* 🔮 v0.47 — at least ONE from block 2 (Talon: "my five-year-old only gets to block two,
+     he still gets a sigil"). The curve takes over from there, unchanged. */
+  return Math.max(block>=2?1:0, Math.floor(Math.pow(Math.max(0,block-SIGIL_FREE_BLOCKS),1.6)/2.5));
 }
 function nextSigilBlock(block){            // what depth would actually pay more
   let b=block+1; while(sigilsFor(b)<=sigilsFor(block)&&b<block+30) b++;
@@ -1096,6 +1116,9 @@ let best=+(localStorage.getItem("hexcap_best")||0);
 /* 🤖 SIM = headless. BOT = the policy currently driving input.
    The bots run the REAL step(). There is no second simulation. */
 let SIM=false, BOT=null, sigOpen=false;
+/* 💾 v0.47 — RUN.banked = sigils this run has already been PAID by bosses (so death only pays
+   what's new); RUN.live = a real, saveable run (not the Bot Lab, not a menu backdrop) */
+let RUN={banked:0,paid:0,live:false}, titleOpen=false, sigFromTitle=false;
 
 function reset(){
   doors=new Map();
@@ -1111,6 +1134,7 @@ function reset(){
   dead=false;paused=false;shopOpen=false;shake=0;bannerT=0;shopDoor=null;lastGlitch="";
   led={earn:0,spend:0,fired:0,hex:0,stash:0,pick:0,back:0,shield:0,
        pop:0, runeCost:0, runeKillCoin:0};
+  RUN={banked:0,paid:0,live:false};
   if(SIM) return;
   sigOpen=false;
   ["over","shop","pz","sig"].forEach(id=>document.getElementById(id).style.display="none");
@@ -1192,7 +1216,7 @@ addEventListener("keydown",e=>{
   if(["ArrowLeft","ArrowRight","ArrowDown","Space"].includes(e.code)) e.preventDefault();
   if(keys[e.code]) return; keys[e.code]=true;
   if(e.code==="KeyS"||e.code==="ArrowDown") doorAction();
-  if(e.code==="KeyR") reset();
+  if(e.code==="KeyR"&&dead) startNewRun();   // 💾 v0.47: R can no longer wipe a live, saved run
   if(e.code==="KeyP") togglePause();
   if(e.code==="Digit1") select("hex");
   if(e.code==="Digit2") select("ember");
@@ -1331,7 +1355,7 @@ slideEl.addEventListener("pointerup",slideUp);
 slideEl.addEventListener("pointercancel",slideUp);
 applyCtrl();   // (fullscreen-on-tap still fires: the zone lives inside #stage, whose listener catches the bubble)
 
-document.getElementById("again").addEventListener("click",reset);
+document.getElementById("again").addEventListener("click",()=>startNewRun());
 document.getElementById("leave").addEventListener("click",closeShop);
 document.getElementById("pauseBtn").addEventListener("click",togglePause);
 document.getElementById("sndBtn").addEventListener("click",()=>{ audioUnlock(); setSound(!SND.on); if(SND.on) sfx("buy"); });
@@ -1369,7 +1393,7 @@ function wantLeft(){ const b=botIn(); return b?b.left :(keys.KeyA||keys.ArrowLef
 function wantRight(){const b=botIn(); return b?b.right:(keys.KeyD||keys.ArrowRight||held.right);}
 function wantCast(){ const b=botIn(); return b?b.cast :(keys.Space||keys.KeyJ||held.cast); }
 function togglePause(){
-  if(dead||shopOpen) return;
+  if(dead||shopOpen||titleOpen) return;
   paused=!paused;
   document.getElementById("pz").style.display=paused?"flex":"none";
   if(paused) audDbg();                                      // 🔎 v0.29
@@ -2585,12 +2609,12 @@ function frame(now){
          rattled for the entire card and the name was unreadable. Let the street
          settle while the card holds. (Talon, 2026-11-11.) */
       shake=Math.max(0,shake-dt*2.2);
-    } else if(!dead&&!paused&&!shopOpen&&!sigOpen&&!rotNeeded) step(dt);   // sideways or nothing
+    } else if(!dead&&!paused&&!shopOpen&&!sigOpen&&!titleOpen&&!rotNeeded) step(dt);   // sideways or nothing
   }catch(e){ glitch("step",e); }
   try{ draw(); }catch(e){ glitch("draw",e); }
   /* 🙈 v0.22: menus get the whole screen. PAUSE is the exception: the button-size
      control lives there, so the pads stay as a faded, untouchable preview. */
-  const menu=!!(dead||shopOpen||sigOpen), pz=!!paused&&!menu;
+  const menu=!!(dead||shopOpen||sigOpen||titleOpen), pz=!!paused&&!menu;
   /* 📏 v0.27 — the phone HUD wraps to TWO rows; measure it instead of guessing, so
      panels and the boss bar always start below it. */
   if(document.body.classList.contains("mobile")){ const hh=document.getElementById("hud").offsetHeight;
@@ -2939,6 +2963,7 @@ function step(dt){
     if(nu&&!isBossBlock(blockIdx))
       for(let i=0;i<(nu.group||1);i++)
         enemies.push(makeEnemy(nu, cam+VW+90+i*30, -1));
+    if(!SIM&&RUN.live) saveRun();                          // 💾 v0.47: a CHECKPOINT at every new block
   }
 
   /* ---- THE CAGE ---- */
@@ -2962,6 +2987,14 @@ function step(dt){
           floats.push({x:P.x,y:GROUND-140,txt:"💀 DOOM UNLOCKED",col:"#b06bff",t:2.8,vy:-14,big:true}); sfx("fanfare"); } } }
       P.runes.doom=(P.runes.doom||0)+1;
       if(!SIM) floats.push({x:P.x+30,y:GROUND-90,txt:"💀 +1",col:"#b06bff",t:1.6,vy:-26});
+      /* 🔮 v0.47 — THE BOSS PAYS OUT. Everything the run has earned so far is banked on the
+         spot (paid ONCE: death only pays what's new since the last boss) + a bonus. */
+      if(M){
+        const pay=Math.max(0,sigilsFor(blockIdx+1)-RUN.banked); RUN.banked+=pay;
+        const tot=pay+TUNE.bossSigils; RUN.paid+=tot; M.sigils=(M.sigils|0)+tot;
+        if(!SIM){ metaSave(); saveRun();
+          floats.push({x:P.x,y:GROUND-168,txt:"🔮 +"+tot+" SIGILS BANKED",col:"#c08bff",t:2.8,vy:-12,big:true}); }
+      }
       if(!SIM) hud();
     } else {
       b.guardT=Math.max(0,(b.guardT||0)-dt);
@@ -3299,7 +3332,8 @@ function die(){
 
   /* 🔮 the harvest — depth dominates */
   const blk=blockIdx+1;
-  const gained=sigilsFor(blk);
+  const gained=Math.max(0,sigilsFor(blk)-RUN.banked);   // 🔮 v0.47: only what's NEW since the last boss paid out
+  clearSave(); RUN.live=false;                           // 💾 the run is over — nothing to continue
   META.sigils+=gained;
   const newDeep=blk>META.deepest;
   if(newDeep) META.deepest=blk;
@@ -3322,10 +3356,10 @@ function die(){
      <span style="color:#ffd166">rune return ${rate}</span> · <b>${led.stash}</b> stashes ·
      <b>${led.pick}</b> locks · <b>${led.back}</b> back-hits · <b>${led.pop}</b> swatted · best <b>${best}m</b>
      <div style="margin-top:9px;color:${gained?"#c08bff":"#6f6b85"};font-size:15px">🔮 +${gained} sigils
-       <span style="color:#8e89a8;font-size:12px">(${META.sigils} banked)</span></div>
+       <span style="color:#8e89a8;font-size:12px">(${META.sigils} banked${RUN.paid?` · bosses already paid 🔮${RUN.paid} this run`:""})</span></div>
      <div style="color:#6f6b85;font-size:11px">
        ${gained?`block ${nextSigilBlock(blk)} would pay ${sigilsFor(nextSigilBlock(blk))}`
-               :`nothing is carved below block ${SIGIL_FREE_BLOCKS+2} — sigils come from DEPTH, only`}</div>
+               :`reach block 2 for your first sigil — after that, DEPTH pays`}</div>
      ${newDeep?`<div style="color:#5ec27a;font-size:12px">⛏ new deepest — block ${blk}</div>`:""}
      ${nextGate?`<div style="color:#6f6b85;font-size:11px">next shelf unlocks at block ${nextGate.gate} — ${nextGate.name}</div>`:""}
      ${jab}
@@ -4039,7 +4073,7 @@ function runOne(pol,maxT){
            fired:led.fired,hex:led.hex,
            ret:led.runeCost?led.runeKillCoin/led.runeCost:0,
            left:(P.runes.ember||0)+(P.runes.lance||0),coin:P.coin,
-           alive:!dead,t};
+           alive:!dead,t,banked:RUN.banked,paid:RUN.paid};
   SIM=false; BOT=null; return r;
 }
 
@@ -4055,8 +4089,8 @@ function campStart(pol){
 }
 function campStep(c,maxT){
   const res=runOne(c.pol,maxT);
-  const blk=res.block, got=sigilsFor(blk);
-  c.earned+=got; SIMM.sigils+=got;
+  const blk=res.block, got=Math.max(0,sigilsFor(blk)-(res.banked|0));   // 🔮 v0.47: bosses already paid SIMM mid-run
+  c.earned+=got+(res.paid|0); SIMM.sigils+=got;
   if(blk>SIMM.deepest) SIMM.deepest=blk;
   spendSigils(c.pol);
   c.hist.push(blk);
@@ -4176,7 +4210,7 @@ document.getElementById("labCamp").onclick=()=>{
   const total=POLICIES.length*N; let done=0;
   (function tick(){
     if(labAbort){ st.textContent="stopped"; SIM=false;BOT=null;SIMM=null;
-                  clearInput(); reset(); return; }
+                  clearInput(); reset(); showTitle(); return; }
     try{
       const t0=performance.now();
       /* one RUN at a time, not one career at a time — a 250-run career
@@ -4194,7 +4228,7 @@ document.getElementById("labCamp").onclick=()=>{
       }
     }catch(err){
       st.textContent="sim error — see console"; console.error(err);
-      SIM=false;BOT=null;SIMM=null; clearInput(); reset(); return;
+      SIM=false;BOT=null;SIMM=null; clearInput(); reset(); showTitle(); return;
     }
     if(cur) res.set(cur.pol.name,{...cur,carved:"…",banked:SIMM?SIMM.sigils:0});
     renderCampaign(res);
@@ -4203,7 +4237,7 @@ document.getElementById("labCamp").onclick=()=>{
       setTimeout(tick,0);
     } else {
       st.textContent=`done — ${POLICIES.length} careers × ${N} runs`;
-      SIM=false;BOT=null;SIMM=null; clearInput(); reset();
+      SIM=false;BOT=null;SIMM=null; clearInput(); reset(); showTitle();
     }
   })();
 };
@@ -4214,7 +4248,7 @@ document.getElementById("labRun").onclick=()=>{
   let i=0; labAbort=false;
   const st=document.getElementById("labStatus");
   (function tick(){
-    if(labAbort){ st.textContent="stopped"; SIM=false;BOT=null; reset(); return; }
+    if(labAbort){ st.textContent="stopped"; SIM=false;BOT=null; reset(); showTitle(); return; }
     const t0=performance.now();
     try{
       while(i<jobs.length&&performance.now()-t0<70){
@@ -4222,13 +4256,13 @@ document.getElementById("labRun").onclick=()=>{
       }
     }catch(err){
       st.textContent="sim error — see console"; console.error(err);
-      SIM=false;BOT=null;SIMM=null; clearInput(); reset(); return;
+      SIM=false;BOT=null;SIMM=null; clearInput(); reset(); showTitle(); return;
     }
     st.textContent=`running… ${i}/${jobs.length}`;
     renderLab(res);
     if(i<jobs.length) setTimeout(tick,0);
     else { st.textContent=`done — ${jobs.length} runs (base game)`;
-           SIM=false;BOT=null;SIMM=null; reset(); }
+           SIM=false;BOT=null;SIMM=null; reset(); showTitle(); }
   })();
 };
 
@@ -4248,6 +4282,7 @@ function closeSig(){
   sigOpen=false;
   document.getElementById("sig").style.display="none";
   if(sigFromDeath&&dead) document.getElementById("over").style.display="flex";
+  if(sigFromTitle){ sigFromTitle=false; showTitle(); }
   hud();
 }
 /* v0.27: "8 → 9 hearts" at max reads "current: 9 hearts" — left side's number,
@@ -4304,7 +4339,7 @@ document.getElementById("sigBtn").onclick=()=>{ if(sigOpen) closeSig(); else ope
 document.getElementById("toSig").onclick=()=>openSig(true);
 document.getElementById("sigClose").onclick=closeSig;
 document.getElementById("sigWipe").onclick=()=>{
-  META={sigils:0,deepest:1,up:{}}; metaSave(); renderSig(); hud();
+  META={sigils:0,deepest:1,up:{}}; metaSave(); clearSave(); renderSig(); hud();   // v0.47: "all progress" includes a saved run
 };
 /* 💾 SAVE CODES. localStorage is per-browser AND per-origin — it does NOT
    follow you to a new PC, a new phone, or even from file:// to the Wi-Fi test
@@ -4343,7 +4378,91 @@ if(MOBILE){
   addEventListener("fullscreenchange",()=>setTimeout(resize,200));
 }
 
-metaLoad(); resize(); reset(); requestAnimationFrame(frame);
+/* ==========================================================
+   💾 v0.47 — NEVER LOSE A RUN. Talon lost a ~block-130 run (≈917 sigils — Hex Chain on
+   its own) to a game that couldn't save: "an hour of time didn't matter."
+   · A CHECKPOINT is written at every new block, after every boss, on SAVE & QUIT, and
+     whenever you leave the app (home button, app switcher, closing the tab).
+   · CONTINUE puts you back at the START of that block with what you had.
+   · A boss you've beaten stays beaten.
+   · Dying ends the run: the save is wiped and the run's sigils are paid.
+   · Starting a NEW run over a saved one still PAYS what the saved run earned.
+   ========================================================== */
+const SAVE_KEY="hexcap_run";
+function runSnap(){
+  return {v:1,block:blockIdx,hp:P.hp,coin:P.coin,runes:Object.assign({},P.runes),pots:P.pots,
+    wind:!!P.wind,sel:P.sel,kills,led:Object.assign({},led),banked:RUN.banked,paid:RUN.paid,
+    bossDone:isBossBlock(blockIdx)&&!arena.pending&&!arena.active,at:Date.now()};
+}
+function saveRun(){
+  if(SIM||!RUN.live||dead||!P) return;
+  if(blockIdx+1>META.deepest){ META.deepest=blockIdx+1; metaSave(); }   // shelves can open MID-run now
+  try{ localStorage.setItem(SAVE_KEY,JSON.stringify(runSnap())); }catch(e){ glitch("save run",e); }
+}
+function loadSave(){
+  try{ const r=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
+       return (r&&r.v===1&&typeof r.block==="number")?r:null; }catch(_){ return null; }
+}
+function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
+function savePayout(r){ return Math.max(0,sigilsFor((r.block|0)+1)-(r.banked|0)); }
+function payOutSave(r){
+  const blk=(r.block|0)+1, g=savePayout(r);
+  META.sigils+=g; if(blk>META.deepest) META.deepest=blk; metaSave(); return g;
+}
+function startNewRun(){
+  const r=loadSave(); if(r) payOutSave(r);           // abandoning a saved run still pays what it earned
+  clearSave(); reset(); RUN.live=true; hideTitle(); hud();
+}
+function continueRun(){
+  const r=loadSave(); if(!r){ startNewRun(); return; }
+  reset(); RUN.live=true; RUN.banked=r.banked|0; RUN.paid=r.paid|0;
+  blockIdx=Math.max(0,r.block|0);
+  const x=blockIdx*TUNE.blockLen+40; P.x=P.maxX=lastX=x; cam=Math.max(0,x-VW*0.42);
+  P.runes=Object.assign({ember:0,lance:0,doom:0},r.runes||{});
+  P.hp=Math.max(1,Math.min(maxHP(),r.hp|0)); P.coin=Math.max(0,r.coin|0);
+  P.pots=Math.max(0,Math.min(potCap(),r.pots|0)); P.wind=!!r.wind;
+  P.sel=(r.sel==="hex"||(P.runes[r.sel]||0)>0)?r.sel:"hex";
+  kills=r.kills|0; if(r.led) Object.assign(led,r.led);
+  if(isBossBlock(blockIdx)&&!r.bossDone) armBoss(blockIdx);
+  hideTitle(); banner("BLOCK "+(blockIdx+1)+" — WELCOME BACK"); hud();
+}
+function showTitle(){
+  if(SIM) return;
+  titleOpen=true; paused=false; sigOpen=false;
+  ["over","shop","pz","sig"].forEach(id=>document.getElementById(id).style.display="none");
+  document.getElementById("banner").style.opacity=0;
+  const r=loadSave(), c=document.getElementById("tContinue"), n=document.getElementById("tNew");
+  c.style.display=r?"":"none";
+  if(r) c.innerHTML="▶ CONTINUE — BLOCK "+((r.block|0)+1)+
+    `<div style="font-size:11px;font-weight:normal;opacity:.85;margin-top:2px">❤️ ${r.hp} · 🪙 ${r.coin} · 🔥 ${(r.runes&&r.runes.ember)||0}${r.paid?` · bosses paid 🔮${r.paid}`:""}</div>`;
+  n.dataset.arm=""; n.textContent=r?"NEW RUN":"▶ NEW RUN";
+  document.getElementById("titleStats").innerHTML=
+    `🔮 <b>${META.sigils}</b> sigils &nbsp;·&nbsp; deepest block <b>${META.deepest}</b> &nbsp;·&nbsp; best <b>${best}m</b>`;
+  document.getElementById("pauseBtn").textContent="⏸ PAUSE";
+  document.getElementById("title").style.display="flex";
+  document.body.classList.add("titleView");
+}
+function hideTitle(){ titleOpen=false; document.getElementById("title").style.display="none"; document.body.classList.remove("titleView"); }
+document.getElementById("tContinue").onclick=continueRun;
+document.getElementById("tNew").onclick=()=>{
+  const n=document.getElementById("tNew"), r=loadSave();
+  if(r&&!n.dataset.arm){                                // a saved run exists: two taps, so a slip can't end it
+    n.dataset.arm="1";
+    n.textContent="END YOUR BLOCK "+((r.block|0)+1)+" RUN? (pays 🔮"+savePayout(r)+") — TAP AGAIN";
+    setTimeout(()=>{ if(n.dataset.arm){ n.dataset.arm=""; n.textContent="NEW RUN"; } },3500);
+    return;
+  }
+  startNewRun();
+};
+document.getElementById("tSig").onclick=()=>{ hideTitle(); sigFromTitle=true; openSig(false); };
+document.getElementById("quitBtn").onclick=()=>{ saveRun(); paused=false;
+  document.getElementById("pz").style.display="none"; showTitle(); };
+document.getElementById("toMenu").onclick=()=>showTitle();
+/* leaving the app saves exactly where you are (you'll pick up at the start of that block) */
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) saveRun(); });
+addEventListener("pagehide",saveRun);
+
+metaLoad(); resize(); reset(); showTitle(); requestAnimationFrame(frame);   // 💾 v0.47: boot to the TITLE
 </script>
 </body>
 </html>
