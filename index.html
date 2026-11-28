@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HexCap">
-<title>HexCap v0.45 — Brute</title>
+<title>HexCap v0.46 — Quick Fixes</title>
 <style>
   /* 🖐️ NO TEXT SELECTION ANYWHERE. Holding a control was popping up
      "Copy / Search Google" on mobile — a button that argues with you is not a
@@ -303,7 +303,7 @@
 <body>
 <div id="wrap">
 
-  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.45 — BRUTE</span></h1>
+  <h1>HEX<span>CAP</span> &nbsp;<span style="font-size:11px;color:#6f6b85;letter-spacing:1px">v0.46 — QUICK FIXES</span></h1>
   <div class="sub">Every 5 blocks from 10, the street seals behind you. Three doorways, one boss, no way around it.</div>
 
   <div id="hud">
@@ -367,6 +367,10 @@
       <div id="audRow" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:#8e89a8">
         <span id="audDbg" style="font-size:11px">audio: not started</span>
         <button class="btn" id="sndTest" style="padding:6px 12px;font-size:12px">🔊 TEST SOUND</button>
+        <span>Volume</span>
+        <button class="btn" id="volDn" style="padding:6px 14px;font-size:16px">−</button>
+        <span id="volVal" style="min-width:38px;display:inline-block;text-align:center;color:#e8e6f0">60%</span>
+        <button class="btn" id="volUp" style="padding:6px 14px;font-size:16px">+</button>
       </div></div>
     <div class="panel" id="over"><h2>THEY GOT YOU</h2>
       <div class="res" id="overRes"></div>
@@ -1626,7 +1630,19 @@ let last=performance.now();
    so the engine wakes on the first touch/key. ⚠️ iPhone: the ringer/silent
    switch mutes web audio — flip it to ring to hear the game.
    ========================================================== */
-const SND={on:true,ctx:null,master:null,last:{}};
+const SND={on:true,ctx:null,master:null,last:{},vol:0.6};
+/* 🔊 v0.46 — VOLUME (Talon): − / + buttons on the pause screen (buttons, not a slider —
+   a slider was the glitchy control Jake hit on his phone). Saved between sessions. */
+try{ const v=parseFloat(localStorage.getItem("hexcap_vol")); if(!isNaN(v)) SND.vol=Math.max(0,Math.min(1,v)); }catch(_){}
+function setVolume(v){
+  SND.vol=Math.round(Math.max(0,Math.min(1,v))*10)/10;
+  if(SND.master) SND.master.gain.value=SND.vol;
+  try{ localStorage.setItem("hexcap_vol",String(SND.vol)); }catch(_){}
+  const el=document.getElementById("volVal"); if(el) el.textContent=Math.round(SND.vol*100)+"%";
+}
+document.getElementById("volDn").addEventListener("click",()=>{ setVolume(SND.vol-0.1); sfx("buy"); });   // a blip so you hear the new level
+document.getElementById("volUp").addEventListener("click",()=>{ setVolume(SND.vol+0.1); sfx("buy"); });
+setVolume(SND.vol);
 
 /* ==========================================================
    🎨 v0.30 ART PASS 1 · SHEET B — THE EIGHT ENEMIES
@@ -2009,16 +2025,6 @@ const UNIT_ART={
     if(hurt){ G=[0.06*W,-0.38*H]; ang=-0.9; }
     else if(aiming){ G=[0.1*W+0.08*W*kick,-0.6*H]; ang=0.22*kick; }   // shouldered: scope at the eye
     else { G=[0.08*W,-0.54*H]; ang=-0.3; }                            // ready: a gentle diagonal across the body
-    if(!down){
-      c.save(); c.translate(G[0],G[1]); c.rotate(ang); rifleShape(c,W,H,p);
-      if(e.aim>0){ const tw=0.6+0.4*Math.sin(e.aim*30);            // ✦ the lens GLINT — "he's lining you up"
-        c.save(); c.fillStyle="#d8fbff"; c.globalAlpha*=tw; c.beginPath(); const gx=-0.52*W, gy=-0.14*H, r=0.22*W;
-        c.moveTo(gx-r,gy); c.lineTo(gx-r*0.18,gy-r*0.18); c.lineTo(gx,gy-r); c.lineTo(gx+r*0.18,gy-r*0.18);
-        c.lineTo(gx+r,gy); c.lineTo(gx+r*0.18,gy+r*0.18); c.lineTo(gx,gy+r); c.lineTo(gx-r*0.18,gy+r*0.18); c.closePath(); c.fill(); c.restore(); }
-      if(fire>0.17) muzzleFlash(c,-1.78*W,-0.035*H,0.24*W);
-      c.restore();
-      aFist(c,G[0],G[1]+0.02*H,0.13*W,p);                            // trigger hand
-    }
     // the ONE visible arm → the fore-grip (charcoal sleeve, orange forearm)
     const FG=(()=>{ const r=rot2([-0.62*W,0.03*H],ang); return [G[0]+r[0],G[1]+r[1]]; })();
     const SB=[-0.58*W,-0.63*H,0.34*W,0.17*H], S=[-0.42*W,-0.54*H];
@@ -2031,6 +2037,16 @@ const UNIT_ART={
     c.strokeStyle=p.skin; c.lineWidth=0.26*W; fore(); c.stroke();
     c.fillStyle=p.cloth; shoulder(); c.fill();                        // the sleeve over the top of it
     c.restore();
+    if(!down){
+      c.save(); c.translate(G[0],G[1]); c.rotate(ang); rifleShape(c,W,H,p);
+      if(e.aim>0){ const tw=0.6+0.4*Math.sin(e.aim*30);            // ✦ the lens GLINT — "he's lining you up"
+        c.save(); c.fillStyle="#d8fbff"; c.globalAlpha*=tw; c.beginPath(); const gx=-0.52*W, gy=-0.14*H, r=0.22*W;
+        c.moveTo(gx-r,gy); c.lineTo(gx-r*0.18,gy-r*0.18); c.lineTo(gx,gy-r); c.lineTo(gx+r*0.18,gy-r*0.18);
+        c.lineTo(gx+r,gy); c.lineTo(gx+r*0.18,gy+r*0.18); c.lineTo(gx,gy+r); c.lineTo(gx-r*0.18,gy+r*0.18); c.closePath(); c.fill(); c.restore(); }
+      if(fire>0.17) muzzleFlash(c,-1.78*W,-0.035*H,0.24*W);
+      c.restore();
+      aFist(c,G[0],G[1]+0.02*H,0.13*W,p);                            // trigger hand
+    }
     if(!down) aFist(c,FG[0],FG[1],0.13*W,p);
   },
   cop(c,W,H,p,e,m){
@@ -2059,6 +2075,8 @@ const UNIT_ART={
     aBox(c,-0.42*W,-0.96*H,0.84*W,0.075*H,0.02*W,p.clothD,p);        // band
     aBox(c,-0.68*W,-0.91*H,0.52*W,0.05*H,0.02*W,p.clothD,p);         // bill, forward
     aSq(c,-0.08*W,-1.02*H,0.08*W,p,p.metal,p.tank);                  // ▢ cap badge
+    aBox(c,0.12*W,-0.86*H,0.2*W,0.17*H,0.06*W,p.metal,p);           // v0.46: EAR PROTECTION — the gun guys wear it
+    aBoxT(c,0.17*W,-0.81*H,0.1*W,0.08*H,p.accent,p);
     aFace(c,-0.1*W,-0.74*H,0.56*W,p,m);
     // THE GUN ARM
     let F,ang;
@@ -2115,15 +2133,6 @@ const UNIT_ART={
     if(hurt){ G=[0.1*W,-0.36*H]; ang=-0.45; }
     else if(aiming){ G=[0.06*W+0.1*W*kick,-0.6*H]; ang=0.3*kick; }
     else { G=[0.12*W,-0.42*H]; ang=-0.08; }                          // ready: low, across the waist
-    if(!down){
-      c.save(); c.translate(G[0],G[1]); c.rotate(ang); shotgunShape(c,W,H,p);
-      if(fire>0.16){ muzzleFlash(c,-1.62*W,-0.035*H,0.4*W);         // the BLAST
-        c.save(); c.strokeStyle="#ffd84a"; c.lineWidth=1.4; c.lineCap="round";
-        for(const a of [-0.35,0,0.35]){ c.beginPath(); c.moveTo(-1.8*W,-0.035*H+a*0.2*W); c.lineTo(-2.2*W,-0.035*H+a*0.9*W); c.stroke(); }
-        c.restore(); }
-      c.restore();
-      aFist(c,G[0],G[1]+0.02*H,0.14*W,p);                           // trigger hand on the grip
-    }
     // the ONE visible arm → the pump hand
     const PH=(()=>{ const r=rot2([-0.74*W,0.03*H],ang); return [G[0]+r[0],G[1]+r[1]]; })();
     const SB=[-0.62*W,-0.62*H,0.36*W,0.17*H], S=[-0.44*W,-0.54*H];
@@ -2138,6 +2147,15 @@ const UNIT_ART={
     c.strokeStyle=p.clothD; c.lineCap="butt"; c.beginPath();       // charcoal wristband
     c.moveTo(PH[0]+(E[0]-PH[0])*0.32,PH[1]+(E[1]-PH[1])*0.32); c.lineTo(PH[0]+(E[0]-PH[0])*0.55,PH[1]+(E[1]-PH[1])*0.55); c.stroke();
     c.restore();
+    if(!down){
+      c.save(); c.translate(G[0],G[1]); c.rotate(ang); shotgunShape(c,W,H,p);
+      if(fire>0.16){ muzzleFlash(c,-1.62*W,-0.035*H,0.4*W);         // the BLAST
+        c.save(); c.strokeStyle="#ffd84a"; c.lineWidth=1.4; c.lineCap="round";
+        for(const a of [-0.35,0,0.35]){ c.beginPath(); c.moveTo(-1.8*W,-0.035*H+a*0.2*W); c.lineTo(-2.2*W,-0.035*H+a*0.9*W); c.stroke(); }
+        c.restore(); }
+      c.restore();
+      aFist(c,G[0],G[1]+0.02*H,0.14*W,p);                           // trigger hand on the grip
+    }
     if(!down) aFist(c,PH[0],PH[1],0.15*W,p);
     aFace(c,-0.14*W,-0.75*H,0.58*W,p,m,true);                       // gritted teeth — drawn LAST
     c.restore();
@@ -2165,8 +2183,6 @@ const UNIT_ART={
     aBox(c,-0.4*W,-1.05*H,0.8*W,0.23*H,0.1*H,p.cloth,p);            // helmet shell
     aBoxT(c,-0.36*W,-1.0*H,0.4*W,0.07*H,p.tank,p);                   // light visor strip
     aBox(c,-0.44*W,-0.86*H,0.84*W,0.045*H,0.02*W,p.clothD,p);       // helmet rim
-    aBox(c,0.12*W,-0.86*H,0.2*W,0.17*H,0.06*W,p.metal,p);           // EAR PROTECTION…
-    aBoxT(c,0.17*W,-0.81*H,0.1*W,0.08*H,p.accent,p);
     aFace(c,-0.1*W,-0.7*H,0.48*W,p,m);
     // THE BATON ARM (the one visible arm) — drawn AFTER the head so the baton is never hidden: sleeve block + orange forearm, baton in the fist
     const HND=hurt?[0.24*W,-0.42*H]:lerp2([0.18*W,-0.46*H],[-0.08*W,-0.62*H],Math.max(0,k));
@@ -2242,13 +2258,13 @@ const UNIT_ART={
     const F=hurt?[-0.56*W,-0.32*H]:(k<0?lerp2(F0,FW,-k/0.45):lerp2(F0,FS,k));
     const E=hurt?[-0.62*W,-0.46*H]:(k<0?lerp2(E0,EW,-k/0.45):lerp2(E0,ES,k));
     arm([-0.8*W,-0.86*H,0.6*W,0.34*H],[-0.5*W,-0.64*H],E,F);
+    c.save(); c.strokeStyle=p.clothD; c.lineWidth=Math.max(1,W*0.03); c.lineJoin="miter";   // ▢▢ v0.46: the square TATTOO (Talon)
+    c.strokeRect(-0.64*W,-0.8*H,0.2*W,0.2*W); c.strokeRect(-0.58*W,-0.8*H+0.06*W,0.08*W,0.08*W); c.restore();
     // the small head set low between the shoulders + the crew's cap + ear protection
     aBox(c,-0.36*W,-0.98*H,0.6*W,0.34*H,0.05*W,p.skin,p);
     aBox(c,-0.4*W,-1.08*H,0.68*W,0.16*H,0.07*H,p.cloth,p);
     aBoxT(c,-0.36*W,-1.05*H,0.26*W,0.07*H,p.metal,p);
     aBox(c,-0.58*W,-0.94*H,0.36*W,0.045*H,0.02*W,p.clothD,p);
-    aBox(c,0.08*W,-0.9*H,0.17*W,0.16*H,0.05*W,p.metal,p);
-    aBoxT(c,0.12*W,-0.86*H,0.09*W,0.08*H,p.accent,p);
     aFace(c,-0.12*W,-0.79*H,0.44*W,p,m);
     if(!down) aFist(c,F[0],F[1],0.21*W,p);
     if(k>0.6) aBurst(c,F[0],F[1],W*0.9);
@@ -2331,8 +2347,36 @@ function drawWizard(ppx){
   const dot=(x,y,r,col)=>{ c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle=col; c.fill(); c.strokeStyle=o.ol; c.lineWidth=1.6; c.stroke(); };
   const sleeve=(x1,y1,x2,y2)=>{ c.strokeStyle=o.ol; c.lineWidth=8; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
     c.strokeStyle=o.robe; c.lineWidth=5; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); };
+  /* the hat: BIG. A floppy crown that bends back and flops over, a huge brim, gold band — + the eyes.
+     (v0.46: its own piece, so the door view can draw JUST the head) */
+  const hatAndEyes=()=>{
+    shape(()=>{ c.beginPath(); c.moveTo(15,-53); c.quadraticCurveTo(10,-73,-3,-79); c.quadraticCurveTo(-18,-84,-27,-67);
+      c.quadraticCurveTo(-19,-70,-15,-62); c.lineTo(-15,-53); c.closePath(); },
+      o.hat,()=>{ c.fillStyle=o.hatD; c.fillRect(-34,-90,27,40); });
+    shape(()=>{ c.beginPath(); c.moveTo(-15.5,-53); c.lineTo(15.8,-53); c.lineTo(14.2,-59.5); c.lineTo(-14.8,-59.5); c.closePath(); },o.gold,null,1.6);
+    /* the BRIM: a big wide disc seen at an angle, swept back, drooping over his face at the front */
+    shape(()=>{ c.beginPath(); c.moveTo(-30,-47); c.quadraticCurveTo(0,-61,26,-51); c.quadraticCurveTo(33.5,-47,28,-38);
+      c.quadraticCurveTo(4,-50,-27,-42); c.quadraticCurveTo(-32.5,-44,-30,-47); c.closePath(); },
+      o.hat,()=>{ c.fillStyle=o.hatD; c.fillRect(-36,-58,16,22); });
+    c.strokeStyle=o.gold; c.lineWidth=2.6; c.beginPath(); c.moveTo(-26.5,-43.9); c.quadraticCurveTo(4,-51.8,27,-40.2); c.stroke();
+    hexGem(c,4,-59,6.8,o);                                          // ⬡ the BUCKLE on the CAP
+    /* the eyes — the whole face */
+    c.save(); c.shadowColor=o.eyeG; c.shadowBlur=6; c.strokeStyle=o.eye; c.fillStyle=o.eye; c.lineWidth=2.1;
+    if(pose==="cast"||pose==="hurt"){                               // > <
+      c.beginPath(); c.moveTo(0,-43.5); c.lineTo(4,-40.3); c.lineTo(0,-37);
+      c.moveTo(12.5,-43.5); c.lineTo(8.5,-40.3); c.lineTo(12.5,-37); c.stroke();
+    } else if(pose==="doom"){                                       // ^ ^  (spaced so they never merge)
+      c.beginPath(); c.moveTo(-0.5,-38); c.lineTo(2.2,-41.6); c.lineTo(4.9,-38);
+      c.moveTo(8.1,-38); c.lineTo(10.8,-41.6); c.lineTo(13.5,-38); c.stroke();
+    } else { aRR(c,1.5,-44,2.9,6.6,1.3); c.fill(); aRR(c,8.6,-44,2.9,6.6,1.3); c.fill(); }
+    c.restore();
+  };
   c.save(); c.translate(ppx,GROUND); if(P.face<0) c.scale(-1,1);
   c.lineJoin="round"; c.lineCap="round";
+  if(P.hidden){                                                      // 🚪 v0.46: IN A DOOR — the body is gone; only a ghost of
+    aRR(c,-10,-51,25,21,8); c.fillStyle=o.void; c.fill();            //   the head shows, turned the way he faces (Talon)
+    hatAndEyes(); c.restore(); return;
+  }
   if(walk){                                                          // motion lines, like the sheet
     c.save(); c.globalAlpha*=0.75; c.strokeStyle=o.gold; c.lineWidth=2.2;
     for(let i=0;i<3;i++){ const y=-10-i*6; c.beginPath(); c.moveTo(-26-i*2,y); c.lineTo(-37-i*2,y); c.stroke(); }
@@ -2362,27 +2406,7 @@ function drawWizard(ppx){
   hexGem(c,3.5,-28,5.2,o);                                          // ⬡ the BROOCH
   if(pose==="stand"||pose==="walk"||pose==="hurt") dot(-15,-14,2.8,o.skin);   // back hand at his side
   if(pose==="doom") dot(-16,-20,2.8,o.skin);                        // hand on the hip
-  /* the hat: BIG. A floppy crown that bends back and flops over, a huge brim, gold band */
-  shape(()=>{ c.beginPath(); c.moveTo(15,-53); c.quadraticCurveTo(10,-73,-3,-79); c.quadraticCurveTo(-18,-84,-27,-67);
-    c.quadraticCurveTo(-19,-70,-15,-62); c.lineTo(-15,-53); c.closePath(); },
-    o.hat,()=>{ c.fillStyle=o.hatD; c.fillRect(-34,-90,27,40); });
-  shape(()=>{ c.beginPath(); c.moveTo(-15.5,-53); c.lineTo(15.8,-53); c.lineTo(14.2,-59.5); c.lineTo(-14.8,-59.5); c.closePath(); },o.gold,null,1.6);
-  /* the BRIM: a big wide disc seen at an angle, swept back, drooping over his face at the front */
-  shape(()=>{ c.beginPath(); c.moveTo(-30,-47); c.quadraticCurveTo(0,-61,26,-51); c.quadraticCurveTo(33.5,-47,28,-38);
-    c.quadraticCurveTo(4,-50,-27,-42); c.quadraticCurveTo(-32.5,-44,-30,-47); c.closePath(); },
-    o.hat,()=>{ c.fillStyle=o.hatD; c.fillRect(-36,-58,16,22); });
-  c.strokeStyle=o.gold; c.lineWidth=2.6; c.beginPath(); c.moveTo(-26.5,-43.9); c.quadraticCurveTo(4,-51.8,27,-40.2); c.stroke();
-  hexGem(c,4,-59,6.8,o);                                            // ⬡ the BUCKLE on the CAP
-  /* the eyes — the whole face */
-  c.save(); c.shadowColor=o.eyeG; c.shadowBlur=6; c.strokeStyle=o.eye; c.fillStyle=o.eye; c.lineWidth=2.1;
-  if(pose==="cast"||pose==="hurt"){                                 // > <
-    c.beginPath(); c.moveTo(0,-43.5); c.lineTo(4,-40.3); c.lineTo(0,-37);
-    c.moveTo(12.5,-43.5); c.lineTo(8.5,-40.3); c.lineTo(12.5,-37); c.stroke();
-  } else if(pose==="doom"){                                         // ^ ^  (spaced so they never merge)
-    c.beginPath(); c.moveTo(-0.5,-38); c.lineTo(2.2,-41.6); c.lineTo(4.9,-38);
-    c.moveTo(8.1,-38); c.lineTo(10.8,-41.6); c.lineTo(13.5,-38); c.stroke();
-  } else { aRR(c,1.5,-44,2.9,6.6,1.3); c.fill(); aRR(c,8.6,-44,2.9,6.6,1.3); c.fill(); }
-  c.restore();
+  hatAndEyes();
   /* the staff, by pose — the HEX JEWEL held in a gold claw */
   let sx1,sy1,sx2,sy2,hx,hy,jx,jy,jr,glowR;
   if(pose==="cast"){ sx1=6;sy1=-25; sx2=31;sy2=-30; hx=14;hy=-26.6; jx=36;jy=-31; jr=7; glowR=23; }
@@ -2441,7 +2465,7 @@ try{ const v=localStorage.getItem("hexcap_sound"); if(v!==null) SND.on=(v==="1")
 function audioUnlock(){
   const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
   if(!SND.ctx){
-    try{ SND.ctx=new AC(); SND.master=SND.ctx.createGain(); SND.master.gain.value=0.6;
+    try{ SND.ctx=new AC(); SND.master=SND.ctx.createGain(); SND.master.gain.value=SND.vol;
          SND.master.connect(SND.ctx.destination); }catch(_){ return; }
   }
   const c=SND.ctx;
@@ -2781,6 +2805,11 @@ function step(dt){
     P.mv=mv;                                       // 🎨 v0.31: is the wizard walking (for the stride pose)
     if(P.x<20) P.x=20;
     if(P.x>P.maxX) P.maxX=P.x;
+  } else if(P.hidden&&P.entryT<=0&&P.pickP<=0&&P.potT<=0&&P.doomT<=0){
+    /* 🚪 v0.46 — TURN AROUND INSIDE A DOOR (Talon): line up your exit shot before you step
+       out. Left/right only changes facing in here; it never moves you. */
+    if(wantLeft()) P.face=-1;
+    if(wantRight()) P.face=1;
   }
 
   /* ---- cast ---- */
